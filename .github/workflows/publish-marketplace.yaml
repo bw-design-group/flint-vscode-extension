@@ -1,0 +1,84 @@
+name: Publish to VS Code Marketplace
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish Extension
+    # Marketplace publishing runs only from the public repository
+    if: github.repository == 'bw-design-group/flint-vscode-extension'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Compile TypeScript
+        run: npm run compile
+
+      - name: Determine Version and Release Type
+        id: set_version
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            RAW_VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            RAW_VERSION="${{ github.event.inputs.version }}"
+          fi
+
+          PACKAGE_VERSION="$RAW_VERSION"
+          PRERELEASE_FLAG=""
+
+          # RC tags (vX.Y.Z-RCn) publish as pre-release X.Y.n per the
+          # marketplace's major.minor.patch-only versioning
+          if [[ "$RAW_VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-[Rr][Cc]([0-9]+)$ ]]; then
+            PACKAGE_VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[4]}"
+            PRERELEASE_FLAG="--pre-release"
+          fi
+
+          echo "raw_version=$RAW_VERSION" >> $GITHUB_OUTPUT
+          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+          echo "prerelease_flag=$PRERELEASE_FLAG" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Update version in package.json
+        run: |
+          jq '.version="${{ steps.set_version.outputs.package_version }}"' package.json > package.tmp.json && mv package.tmp.json package.json
+        shell: bash
+
+      - name: Package Extension
+        run: npx vsce package ${{ steps.set_version.outputs.prerelease_flag }}
+
+      - name: Publish to Marketplace
+        run: npx vsce publish --packagePath *.vsix ${{ steps.set_version.outputs.prerelease_flag }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            *.vsix

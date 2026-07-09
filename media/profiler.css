@@ -1,0 +1,321 @@
+/* Profiler Webview Styles */
+:root {
+    --profiler-bg: var(--vscode-editor-background);
+    --profiler-fg: var(--vscode-editor-foreground);
+    --profiler-border: var(--vscode-panel-border);
+    --profiler-header-bg: var(--vscode-sideBar-background);
+    --profiler-card-bg: var(--vscode-editorWidget-background);
+    --profiler-severity-high: #f44747;
+    --profiler-severity-medium: #cca700;
+    --profiler-severity-low: #3794ff;
+    --profiler-good: #89d185;
+    --profiler-muted: var(--vscode-descriptionForeground);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    color: var(--profiler-fg);
+    background-color: var(--profiler-bg);
+    padding: 16px;
+    line-height: 1.5;
+}
+
+.profiler-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Header */
+.profiler-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--profiler-border);
+}
+
+.profiler-header h1 {
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.profiler-header .view-path {
+    font-size: 0.85em;
+    color: var(--profiler-muted);
+    margin-top: 4px;
+}
+
+.profiler-header .analysis-type {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+}
+
+/* Score Card */
+.score-card {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.score-card-item {
+    background: var(--profiler-card-bg);
+    border: 1px solid var(--profiler-border);
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+}
+
+.score-card-item .value {
+    font-size: 1.6em;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.score-card-item .label {
+    font-size: 0.8em;
+    color: var(--profiler-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.score-card-item.severity-high .value {
+    color: var(--profiler-severity-high);
+}
+
+.score-card-item.severity-medium .value {
+    color: var(--profiler-severity-medium);
+}
+
+/* Sections */
+.section {
+    margin-bottom: 24px;
+}
+
+.section h2 {
+    font-size: 1.05em;
+    font-weight: 600;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--profiler-border);
+}
+
+/* Warnings */
+.warnings-list {
+    list-style: none;
+}
+
+.warning-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+    background: var(--profiler-card-bg);
+}
+
+.warning-item.severity-high {
+    border-left-color: var(--profiler-severity-high);
+}
+
+.warning-item.severity-medium {
+    border-left-color: var(--profiler-severity-medium);
+}
+
+.warning-item.severity-low {
+    border-left-color: var(--profiler-severity-low);
+}
+
+.warning-badge {
+    font-size: 0.7em;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    align-self: flex-start;
+    margin-top: 2px;
+}
+
+.warning-badge.severity-high {
+    background: var(--profiler-severity-high);
+    color: #fff;
+}
+
+.warning-badge.severity-medium {
+    background: var(--profiler-severity-medium);
+    color: #000;
+}
+
+.warning-badge.severity-low {
+    background: var(--profiler-severity-low);
+    color: #fff;
+}
+
+.warning-content {
+    flex: 1;
+}
+
+.warning-content .message {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.warning-content .recommendation {
+    font-size: 0.85em;
+    color: var(--profiler-muted);
+}
+
+.no-warnings {
+    color: var(--profiler-good);
+    padding: 12px;
+    text-align: center;
+    background: var(--profiler-card-bg);
+    border-radius: 4px;
+}
+
+/* Metrics Table */
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--profiler-card-bg);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.metrics-table th,
+.metrics-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--profiler-border);
+}
+
+.metrics-table th {
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--profiler-muted);
+    background: var(--profiler-header-bg);
+}
+
+.metrics-table td:last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.metrics-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Component Types */
+.component-type-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 6px;
+}
+
+.component-type-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: var(--profiler-card-bg);
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.component-type-item .type-name {
+    font-family: var(--vscode-editor-font-family);
+}
+
+.component-type-item .type-count {
+    font-weight: 600;
+    color: var(--profiler-muted);
+}
+
+/* Binding State Summary (Runtime) */
+.binding-state-bar {
+    display: flex;
+    height: 24px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.binding-state-segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75em;
+    font-weight: 600;
+    color: #fff;
+    min-width: 24px;
+}
+
+.binding-state-segment.resolved {
+    background: var(--profiler-good);
+    color: #000;
+}
+
+.binding-state-segment.pending {
+    background: var(--profiler-severity-medium);
+    color: #000;
+}
+
+.binding-state-segment.error {
+    background: var(--profiler-severity-high);
+}
+
+.binding-state-legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.85em;
+    color: var(--profiler-muted);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.legend-dot.resolved {
+    background: var(--profiler-good);
+}
+
+.legend-dot.pending {
+    background: var(--profiler-severity-medium);
+}
+
+.legend-dot.error {
+    background: var(--profiler-severity-high);
+}
+
+/* Timestamp footer */
+.profiler-footer {
+    margin-top: 24px;
+    padding-top: 12px;
+    border-top: 1px solid var(--profiler-border);
+    font-size: 0.8em;
+    color: var(--profiler-muted);
+    text-align: right;
+}

@@ -1,0 +1,20 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Run Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"preLaunchTask": "npm: compile",
+			"outFiles": [
+                "${workspaceRoot}/out/src/**/*.js"
+            ],
+			"runtimeExecutable": "${execPath}",
+			"sourceMaps": true,
+			"args": [
+				"--profile-temp",
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			]
+		}
+	]
+}

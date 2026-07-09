@@ -1,0 +1,923 @@
+/* Page Binding Profiler Webview Styles */
+:root {
+    --profiler-bg: var(--vscode-editor-background);
+    --profiler-fg: var(--vscode-editor-foreground);
+    --profiler-border: var(--vscode-panel-border);
+    --profiler-header-bg: var(--vscode-sideBar-background);
+    --profiler-card-bg: var(--vscode-editorWidget-background);
+    --profiler-severity-high: #f44747;
+    --profiler-severity-medium: #cca700;
+    --profiler-severity-low: #3794ff;
+    --profiler-good: #89d185;
+    --profiler-pending: #cca700;
+    --profiler-error: #f44747;
+    --profiler-stale: #888;
+    --profiler-muted: var(--vscode-descriptionForeground);
+    --profiler-accent: var(--vscode-focusBorder);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    color: var(--profiler-fg);
+    background-color: var(--profiler-bg);
+    padding: 0;
+    line-height: 1.5;
+    overflow: hidden;
+    height: 100vh;
+}
+
+.recording-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Header */
+.recording-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--profiler-border);
+    flex-shrink: 0;
+}
+
+.recording-header h1 {
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.recording-header .view-path {
+    font-size: 0.8em;
+    color: var(--profiler-muted);
+    margin-top: 2px;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.recording-status {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.recording-status.recording {
+    background: var(--profiler-severity-high);
+    color: #fff;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.recording-status.complete {
+    background: var(--profiler-good);
+    color: #000;
+}
+
+.recording-status.waiting {
+    background: var(--profiler-severity-medium);
+    color: #000;
+}
+
+.recording-status.idle {
+    background: var(--profiler-stale);
+    color: #fff;
+}
+
+.recording-status.reloading {
+    background: var(--profiler-accent);
+    color: #fff;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.btn {
+    font-family: var(--vscode-font-family);
+    font-size: 0.85em;
+    padding: 4px 12px;
+    border: 1px solid var(--profiler-border);
+    border-radius: 3px;
+    cursor: pointer;
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+}
+
+.btn:hover {
+    background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.btn-danger {
+    background: var(--profiler-severity-high);
+    color: #fff;
+    border-color: var(--profiler-severity-high);
+}
+
+.btn-danger:hover {
+    opacity: 0.9;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Icon Buttons */
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--profiler-muted);
+}
+
+.btn-icon:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.2));
+    color: var(--profiler-fg);
+}
+
+.btn-icon:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.btn-icon-danger {
+    color: var(--profiler-severity-high);
+}
+
+.btn-icon-danger:hover {
+    background: rgba(244, 71, 71, 0.15);
+}
+
+.btn-icon-small {
+    width: 24px;
+    height: 24px;
+}
+
+.btn-icon svg {
+    display: block;
+}
+
+/* Counter Cards */
+.counter-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--profiler-border);
+    flex-shrink: 0;
+}
+
+.counter-card {
+    background: var(--profiler-card-bg);
+    border: 1px solid var(--profiler-border);
+    border-radius: 4px;
+    padding: 8px 12px;
+    text-align: center;
+}
+
+.counter-card .counter-value {
+    font-size: 1.4em;
+    font-weight: 700;
+    display: block;
+    font-variant-numeric: tabular-nums;
+}
+
+.counter-card .counter-label {
+    font-size: 0.7em;
+    color: var(--profiler-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.counter-card.total .counter-value { color: var(--profiler-fg); }
+.counter-card.pending .counter-value { color: var(--profiler-pending); }
+.counter-card.resolved .counter-value { color: var(--profiler-good); }
+.counter-card.errors .counter-value { color: var(--profiler-error); }
+
+/* Main Content Area - Split View */
+.content-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Waterfall Section */
+.waterfall-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 150px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    font-size: 0.85em;
+    font-weight: 600;
+    background: var(--profiler-header-bg);
+    border-bottom: 1px solid var(--profiler-border);
+    flex-shrink: 0;
+}
+
+.section-header .section-count {
+    font-weight: 400;
+    color: var(--profiler-muted);
+}
+
+/* Waterfall Timeline */
+.waterfall-container {
+    flex: 1;
+    overflow: auto;
+}
+
+.waterfall-time-header {
+    display: flex;
+    padding: 4px 16px 4px 320px;
+    font-size: 0.7em;
+    color: var(--profiler-muted);
+    border-bottom: 1px solid var(--profiler-border);
+    position: sticky;
+    top: 0;
+    background: var(--profiler-bg);
+    z-index: 1;
+}
+
+.waterfall-time-marker {
+    flex: 1;
+    text-align: center;
+    border-left: 1px solid var(--profiler-border);
+    padding-left: 4px;
+}
+
+.waterfall-time-marker:first-child {
+    border-left: none;
+    text-align: left;
+}
+
+.waterfall-rows {
+    padding: 0;
+}
+
+.waterfall-row {
+    display: flex;
+    align-items: center;
+    height: 22px;
+    border-bottom: 1px solid var(--profiler-border);
+    font-size: 0.8em;
+}
+
+.waterfall-row:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+.waterfall-label {
+    width: 320px;
+    min-width: 320px;
+    padding: 0 8px 0 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--vscode-editor-font-family);
+    font-size: 0.85em;
+    color: var(--profiler-muted);
+    cursor: default;
+}
+
+.waterfall-label:hover {
+    color: var(--profiler-fg);
+}
+
+.waterfall-timeline {
+    flex: 1;
+    position: relative;
+    height: 100%;
+    margin-right: 16px;
+    background-image:
+        linear-gradient(to right, var(--profiler-border) 1px, transparent 1px);
+    background-size: 25% 100%;
+    background-position: 0 0;
+}
+
+.waterfall-tick {
+    position: absolute;
+    top: 3px;
+    width: 4px;
+    height: 16px;
+    border-radius: 1px;
+}
+
+.waterfall-tick.state-pending {
+    background: var(--profiler-pending);
+}
+
+.waterfall-tick.state-good,
+.waterfall-tick.state-resolved {
+    background: var(--profiler-good);
+}
+
+.waterfall-tick.state-bad,
+.waterfall-tick.state-error {
+    background: var(--profiler-error);
+}
+
+.waterfall-tick.state-stale {
+    background: var(--profiler-stale);
+    opacity: 0.6;
+}
+
+.waterfall-tick.state-unknown {
+    background: var(--profiler-muted);
+    opacity: 0.4;
+}
+
+.waterfall-tick.baseline-tick {
+    opacity: 0.3;
+    height: 10px;
+    top: 6px;
+}
+
+.waterfall-tick.baseline-tick.state-bad,
+.waterfall-tick.baseline-tick.state-error {
+    opacity: 0.9;
+    height: 16px;
+    top: 3px;
+}
+
+/* Execution bars - discrete events with dead space between them */
+.waterfall-bar {
+    position: absolute;
+    top: 3px;
+    height: 16px;
+    border-radius: 2px;
+    min-width: 3px;
+}
+
+.waterfall-bar:hover {
+    outline: 1px solid var(--profiler-fg);
+    z-index: 1;
+}
+
+.waterfall-bar.state-pending {
+    background: var(--profiler-pending);
+}
+
+.waterfall-bar.state-good,
+.waterfall-bar.state-resolved {
+    background: var(--profiler-good);
+}
+
+.waterfall-bar.state-bad,
+.waterfall-bar.state-error {
+    background: var(--profiler-error);
+}
+
+.waterfall-bar.state-stale {
+    background: var(--profiler-stale);
+    opacity: 0.5;
+}
+
+.waterfall-bar.state-unknown {
+    background: var(--profiler-muted);
+    opacity: 0.4;
+}
+
+/* Empty state */
+.waterfall-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--profiler-muted);
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* Event Log Section */
+.event-log-section {
+    height: 200px;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    border-top: 2px solid var(--profiler-border);
+}
+
+.event-log-container {
+    flex: 1;
+    overflow-y: auto;
+    font-family: var(--vscode-editor-font-family);
+    font-size: 0.8em;
+    padding: 4px 0;
+}
+
+.event-log-entry {
+    padding: 2px 16px;
+    white-space: nowrap;
+    display: flex;
+    gap: 8px;
+}
+
+.event-log-entry:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+.event-time {
+    color: var(--profiler-muted);
+    min-width: 70px;
+}
+
+.event-label {
+    color: var(--profiler-fg);
+    min-width: 200px;
+}
+
+.event-transition {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.event-state {
+    padding: 0 4px;
+    border-radius: 2px;
+    font-size: 0.9em;
+}
+
+.event-state.state-pending {
+    color: var(--profiler-pending);
+}
+
+.event-state.state-good,
+.event-state.state-resolved {
+    color: var(--profiler-good);
+}
+
+.event-state.state-bad,
+.event-state.state-error {
+    color: var(--profiler-error);
+}
+
+.event-state.state-stale {
+    color: var(--profiler-stale);
+}
+
+.event-arrow {
+    color: var(--profiler-muted);
+}
+
+.event-cycle-duration {
+    font-size: 0.85em;
+    font-weight: 600;
+    padding: 0 4px;
+    border-radius: 2px;
+    background: var(--profiler-border);
+    color: var(--profiler-fg);
+    font-variant-numeric: tabular-nums;
+}
+
+.event-binding-type {
+    color: var(--profiler-muted);
+    font-size: 0.85em;
+}
+
+.event-log-entry.baseline {
+    opacity: 0.5;
+}
+
+.event-baseline-tag {
+    font-size: 0.75em;
+    padding: 0 4px;
+    border-radius: 2px;
+    background: var(--profiler-border);
+    color: var(--profiler-muted);
+}
+
+.event-log-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--profiler-muted);
+    font-style: italic;
+}
+
+/* Alternating row backgrounds */
+.waterfall-row:nth-child(even) {
+    background: rgba(128, 128, 128, 0.04);
+}
+
+/* Group header rows */
+.waterfall-group-header {
+    background: var(--profiler-header-bg);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.8em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px 0 16px;
+}
+
+.waterfall-group-header:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+.group-chevron {
+    width: 12px;
+    text-align: center;
+    color: var(--profiler-muted);
+    flex-shrink: 0;
+}
+
+.group-state-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.group-state-dot.state-good,
+.group-state-dot.state-resolved {
+    background: var(--profiler-good);
+}
+
+.group-state-dot.state-pending {
+    background: var(--profiler-pending);
+}
+
+.group-state-dot.state-bad,
+.group-state-dot.state-error {
+    background: var(--profiler-error);
+}
+
+.group-state-dot.state-stale {
+    background: var(--profiler-stale);
+}
+
+.group-state-dot.state-unknown {
+    background: var(--profiler-muted);
+}
+
+.group-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--profiler-fg);
+}
+
+.group-badge {
+    font-size: 0.7em;
+    font-weight: 400;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--profiler-border);
+    color: var(--profiler-muted);
+    flex-shrink: 0;
+}
+
+.group-duration {
+    font-size: 0.75em;
+    font-weight: 400;
+    color: var(--profiler-muted);
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Selected row */
+.waterfall-row.selected {
+    background: var(--vscode-list-activeSelectionBackground);
+    color: var(--vscode-list-activeSelectionForeground);
+}
+
+.waterfall-row.selected .waterfall-label {
+    color: var(--vscode-list-activeSelectionForeground);
+}
+
+/* Highlighted event log entries */
+.event-log-entry.highlighted {
+    background: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.2));
+}
+
+/* Binding type tags */
+.binding-type-tag {
+    display: inline-block;
+    font-size: 0.7em;
+    font-weight: 600;
+    padding: 0 3px;
+    border-radius: 2px;
+    margin-right: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    vertical-align: middle;
+}
+
+.binding-type-tag.type-property {
+    background: rgba(55, 148, 255, 0.2);
+    color: var(--profiler-severity-low);
+}
+
+.binding-type-tag.type-tag {
+    background: rgba(137, 209, 133, 0.2);
+    color: var(--profiler-good);
+}
+
+.binding-type-tag.type-expr,
+.binding-type-tag.type-expression {
+    background: rgba(204, 167, 0, 0.2);
+    color: var(--profiler-pending);
+}
+
+.binding-type-tag.type-query {
+    background: rgba(188, 143, 243, 0.2);
+    color: #bc8ff3;
+}
+
+/* Waterfall Tooltip */
+.waterfall-tooltip {
+    position: fixed;
+    z-index: 100;
+    background: var(--profiler-card-bg);
+    border: 1px solid var(--profiler-border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    display: none;
+    max-width: 400px;
+    font-size: 0.8em;
+    line-height: 1.4;
+}
+
+.tooltip-label {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--profiler-fg);
+}
+
+.tooltip-row {
+    display: flex;
+    gap: 6px;
+    padding: 1px 0;
+}
+
+.tooltip-key {
+    color: var(--profiler-muted);
+    min-width: 80px;
+}
+
+.tooltip-value {
+    color: var(--profiler-fg);
+}
+
+.tooltip-error {
+    color: var(--profiler-error);
+    margin-top: 4px;
+    font-size: 0.9em;
+}
+
+/* Time Cursor */
+.time-cursor {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--profiler-accent);
+    pointer-events: none;
+    z-index: 5;
+    display: none;
+}
+
+.time-cursor-label {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--profiler-accent);
+    color: #fff;
+    font-size: 0.7em;
+    padding: 1px 4px;
+    border-radius: 2px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Zoom Overlay */
+.zoom-overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: var(--profiler-accent);
+    opacity: 0.15;
+    pointer-events: none;
+    display: none;
+    z-index: 4;
+}
+
+.zoom-selection-label {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7em;
+    color: var(--profiler-accent);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Reset Zoom Button */
+.btn-small {
+    font-size: 0.75em;
+    padding: 2px 8px;
+}
+
+/* Context Menu */
+.context-menu {
+    position: fixed;
+    z-index: 200;
+    background: var(--profiler-card-bg);
+    border: 1px solid var(--profiler-border);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    padding: 4px 0;
+    display: none;
+    min-width: 180px;
+}
+
+.context-menu-item {
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+
+.context-menu-item:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+/* Poll Rate Display */
+.poll-rate-display {
+    font-size: 0.75em;
+    color: var(--profiler-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Waterfall container needs relative positioning for cursor/zoom */
+.waterfall-container {
+    position: relative;
+}
+
+/* Scope Toolbar */
+.scope-toolbar {
+    display: flex;
+    gap: 12px;
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--profiler-border);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.scope-toolbar label {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    font-size: 0.8em;
+    color: var(--profiler-muted);
+}
+
+.scope-toolbar select {
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border, var(--profiler-border));
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-family: var(--vscode-font-family);
+    font-size: 1em;
+    min-width: 120px;
+}
+
+.scope-toolbar select:focus {
+    outline: 1px solid var(--profiler-accent);
+    outline-offset: -1px;
+}
+
+.scope-toolbar select:disabled,
+.scope-toolbar input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Start Button */
+.btn-icon-start {
+    color: var(--profiler-good);
+}
+
+.btn-icon-start:hover {
+    background: rgba(137, 209, 133, 0.15);
+    color: var(--profiler-good);
+}
+
+/* Scope Actions (within scope toolbar) */
+.scope-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+}
+
+.btn-reload {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--vscode-font-family);
+    font-size: 0.8em;
+    padding: 3px 10px;
+    border: 1px solid var(--profiler-border);
+    border-radius: 3px;
+    cursor: pointer;
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+}
+
+.btn-reload:hover:not(:disabled) {
+    background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.btn-reload:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.reload-status {
+    font-size: 0.8em;
+    color: var(--profiler-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* View Filter Chips */
+.view-filter-bar {
+    display: none;
+    gap: 6px;
+    padding: 4px 16px;
+    flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 1px solid var(--profiler-border);
+    flex-shrink: 0;
+}
+
+.view-filter-chip {
+    font-family: var(--vscode-font-family);
+    font-size: 0.75em;
+    padding: 2px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    border: 1px solid var(--profiler-border);
+    background: transparent;
+    color: var(--profiler-muted);
+    transition: background 0.15s, color 0.15s;
+}
+
+.view-filter-chip:hover {
+    background: var(--vscode-list-hoverBackground);
+    color: var(--profiler-fg);
+}
+
+.view-filter-chip.active {
+    background: var(--profiler-accent);
+    color: #fff;
+    border-color: var(--profiler-accent);
+}
+
+/* Footer */
+.recording-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 16px;
+    border-top: 1px solid var(--profiler-border);
+    font-size: 0.75em;
+    color: var(--profiler-muted);
+    flex-shrink: 0;
+}
