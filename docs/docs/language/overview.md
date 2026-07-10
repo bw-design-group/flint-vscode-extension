@@ -17,9 +17,9 @@ Flint has two independent language-intelligence engines. You use one or the othe
 | | Gateway LSP (default) | Legacy completion (fallback) |
 |---|---|---|
 | **Enabled by** | `flint.languageServer.enabled: true` (default) | `flint.languageServer.enabled: false` |
-| **How it works** | The `flint-lsp-proxy` language server, bundled with the extension, connects to the gateway's headless Flint API over HTTP | VS Code completion provider merging local script indexing with Designer bridge responses |
+| **How it works** | The extension connects directly to the language server hosted by the Designer Bridge module on the gateway, over WebSocket | VS Code completion provider merging local script indexing with Designer bridge responses |
 | **Provides** | Completion, hover, definition, references, syntax diagnostics, document and workspace symbols | Completion only |
-| **Needs** | Configured gateway + API token; Designer Bridge module on the gateway | Works offline for local script completion; a connected Designer for `system.*` completions |
+| **Needs** | Configured gateway + API token; Designer Bridge module v1.2.0+ on the gateway | Works offline for local script completion; a connected Designer for `system.*` completions |
 | **Parser** | Jython's ANTLR Python 2.7 parser with a per-project AST index | Prefix-string matching, regex script indexing, and Ignition stubs |
 
 The key difference for day-to-day work: the Gateway LSP delivers the full feature set with **no Designer open**. The legacy path exists for environments without gateway API access, and it only ever offers completion — no hover, definition, references, or diagnostics.
@@ -42,11 +42,9 @@ The key difference for day-to-day work: the Gateway LSP delivers the full featur
 
 ## How the Gateway LSP connects
 
-The extension launches the bundled `flint-lsp-proxy` language server and passes it the URL, API token, and TLS settings of your selected gateway from `flint.config.json`. The proxy translates LSP requests into calls against the gateway-scope Flint API, where the actual parsing and indexing runs. If no gateway is configured or the gateway has no API token, the language server stays dormant; it starts automatically once configuration is in place, and restarts when you change gateways.
+The language server runs inside the Designer Bridge module on the gateway. The extension opens a WebSocket to `/system/flint-lsp` on your selected gateway — authenticating with the API token and TLS settings from `flint.config.json` — and speaks the Language Server Protocol directly over that connection. All parsing and indexing happens on the gateway. If no gateway is configured, the gateway has no API token, or the gateway's module predates v1.2.0, the language server stays dormant; it starts automatically once configuration is in place, and reconnects when you change gateways or the gateway restarts.
 
 If the gateway hosts a single project, the LSP selects it automatically; with multiple projects, set the project explicitly in your gateway configuration.
-
-The setting `flint.languageServer.proxyPath` is an advanced override for pointing at an external proxy binary — you do not need it for normal use.
 
 See [Gateway LSP](/language/gateway-lsp) for setup and configuration details, and [Completion](/language/completion) for how the legacy engine's sources combine.
 

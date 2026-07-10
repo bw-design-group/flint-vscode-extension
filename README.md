@@ -187,14 +187,14 @@ Configure Flint through VS Code settings (File → Preferences → Settings):
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `flint.showInheritedResources` | `true` | Show inherited resources in the project browser |
+| `flint.useNativeFileIcons` | `false` | Use your file icon theme's icons in the Project Browser instead of Flint's built-in icons |
 | `flint.groupResourcesByType` | `true` | Group resources by type in the project browser |
 | `flint.autoRefreshProjects` | `true` | Auto-refresh projects when files change |
 | `flint.showEmptyResourceTypes` | `false` | Show resource types even when they have no resources |
 | `flint.has83DesignerLauncher` | `false` | Enable 8.3+ Designer Launcher support |
 | `flint.hasKindlingInstalled` | `false` | Whether Kindling is installed and available on PATH |
 | `flint.kindlingExecutablePath` | `""` | Custom path to Kindling executable for backup viewing |
-| `flint.languageServer.enabled` | `true` | Use the gateway-backed Flint language server (flint-lsp-proxy) for Jython completion, hover, go-to-definition, references, and diagnostics. When disabled, falls back to the legacy Designer-bridge completion |
-| `flint.languageServer.proxyPath` | `""` | Optional path to the `flint-lsp-proxy` executable (bundled with the extension; leave empty unless overriding) |
+| `flint.languageServer.enabled` | `true` | Use the gateway-hosted Flint language server (Designer Bridge module v1.2.0+, connected over WebSocket) for Jython completion, hover, go-to-definition, references, and diagnostics. When disabled, falls back to the legacy Designer-bridge completion |
 | `flint.enablePythonAutocomplete` | `true` | Enable autocomplete for Ignition Python script modules |
 | `flint.enableDesignerLspCompletion` | `true` | Enable Designer LSP completions for system functions (requires a connected Designer with the Flint Bridge module) |
 | `flint.enableLocalScriptCompletion` | `true` | Enable local script module completions (project scripts indexed from the filesystem) |
@@ -299,7 +299,7 @@ Each gateway in `flint.config.json` supports:
 
 ### Kindling
 View Ignition backup files (.gwbk, .modl, .idb):
-1. Install [Kindling](https://github.com/ia-eknorr/kindling)
+1. Install [Kindling](https://github.com/inductiveautomation/kindling)
 2. Right-click on backup files → "Open with Kindling"
 
 ### Designer Launcher

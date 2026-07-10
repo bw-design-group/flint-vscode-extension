@@ -34,7 +34,7 @@ code --install-extension Keith-gamble.ignition-flint
 Every release also attaches a `.vsix` package to its [GitHub release](https://github.com/bw-design-group/flint-vscode-extension/releases). To install it, open the Extensions view, click the **...** menu, choose **Install from VSIX...**, and select the downloaded file.
 
 :::note
-The extension bundles everything it needs, including the language server proxy used for gateway-backed language features. There is no separate binary to install; the `flint.languageServer.proxyPath` setting exists only as an advanced override.
+The extension bundles everything it needs — there is no separate binary to install. Gateway-backed language features connect directly to the language server hosted by the Designer Bridge module (v1.2.0+) on your gateway.
 :::
 
 ## Install the Designer Bridge module

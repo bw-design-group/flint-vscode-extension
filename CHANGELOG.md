@@ -5,6 +5,17 @@ All notable changes to the Flint for Ignition extension will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-07-10
+
+### Added
+- Connected the language server directly to the gateway over WebSocket, removing the
+  bundled local proxy process. Any LSP-capable editor can now connect to the gateway's
+  `/system/flint-lsp` endpoint with a gateway API token.
+
+### Removed
+- Removed the `flint.languageServer.proxyPath` setting; the language server now requires
+  Flint Designer Bridge module v1.2.0 or newer.
+
 ## [1.1.1] - 2026-07-10
 
 ### Fixed

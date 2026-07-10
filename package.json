@@ -976,14 +976,8 @@
                 "flint.languageServer.enabled": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Use the gateway-backed Flint language server (flint-lsp-proxy) for Ignition Jython (Python 2.7) intelligence: completion, hover, go-to-definition, references, and diagnostics sourced from the selected gateway. When disabled, falls back to the legacy Designer-bridge Python completion.",
+                    "description": "Use the gateway-backed Flint language server for Ignition Jython (Python 2.7) intelligence: completion, hover, go-to-definition, references, and diagnostics sourced from the selected gateway over WebSocket. Requires Flint Designer Bridge module v1.2.0 or newer. When disabled, falls back to the legacy Designer-bridge Python completion.",
                     "scope": "window"
-                },
-                "flint.languageServer.proxyPath": {
-                    "type": "string",
-                    "default": "",
-                    "description": "Advanced: path to an external flint-lsp-proxy executable. Leave empty to use the proxy bundled with the extension (recommended). Only set this to override the bundled proxy with your own build.",
-                    "scope": "machine"
                 },
                 "flint.enablePythonAutocomplete": {
                     "type": "boolean",
@@ -999,6 +993,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Enable local script module completions (project scripts indexed from filesystem)"
+                },
+                "flint.useNativeFileIcons": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Use your file icon theme's icons for resources in the Project Browser instead of Flint's built-in icons. Source control decorations are always shown regardless of this setting."
                 },
                 "flint.pythonAutocompleteIncludeInherited": {
                     "type": "boolean",
@@ -1161,7 +1160,7 @@
         "test:coverage": "nyc npm test",
         "test:e2e": "npm run compile && node ./out/src/test/runE2eTest.js",
         "prepare": "ts-patch install && husky",
-        "test:lsp-e2e": "node test/e2e/lspProxy/driver.mjs out/src/lspProxy/main.js && node test/e2e/lspProxy/edge.mjs out/src/lspProxy/main.js"
+        "test:lsp-e2e": "node test/e2e/lsp/driver.mjs && node test/e2e/lsp/edge.mjs"
     },
     "devDependencies": {
         "@stylistic/eslint-plugin": "^5.2.3",
@@ -1191,8 +1190,6 @@
         "glob": "^8.1.0",
         "undici": "^6.27.0",
         "vscode-languageclient": "^9.0.1",
-        "vscode-languageserver": "^8.1.0",
-        "vscode-languageserver-textdocument": "^1.0.12",
         "ws": "^8.19.0"
     },
     "lint-staged": {

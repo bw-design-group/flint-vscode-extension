@@ -26,6 +26,7 @@ These settings control where Flint finds its configuration and how the [Project 
 | `flint.groupResourcesByType` | boolean | `true` | Group resources by type (with Perspective resources under a Perspective category) in the Project Browser. |
 | `flint.autoRefreshProjects` | boolean | `true` | Automatically refresh the project tree when files change on disk. |
 | `flint.showEmptyResourceTypes` | boolean | `false` | Show resource type nodes even when they contain no resources. |
+| `flint.useNativeFileIcons` | boolean | `false` | Use your file icon theme's icons for resources in the Project Browser instead of Flint's built-in icons. Source control (git) decorations on tree items are always shown regardless of this setting. |
 
 ## Language intelligence
 
@@ -33,8 +34,7 @@ These settings select and tune the completion engines described in [Language Fea
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `flint.languageServer.enabled` | boolean | `true` | Use the gateway-backed Flint language server for Ignition Jython (Python 2.7) intelligence: completion, hover, go-to-definition, references, and diagnostics sourced from the selected gateway. Requires a configured gateway with an API token (see [Gateway Language Server](/language/gateway-lsp)). When disabled, Flint falls back to the legacy completion engines below. |
-| `flint.languageServer.proxyPath` | string | `""` | Advanced: path to an external `flint-lsp-proxy` executable. Leave empty to use the proxy bundled with the extension (recommended). Only set this to override the bundled proxy with your own build. |
+| `flint.languageServer.enabled` | boolean | `true` | Use the gateway-hosted Flint language server for Ignition Jython (Python 2.7) intelligence: completion, hover, go-to-definition, references, and diagnostics sourced from the selected gateway. Requires a configured gateway with an API token and Designer Bridge module v1.2.0+ (see [Gateway Language Server](/language/gateway-lsp)). When disabled, Flint falls back to the legacy completion engines below. |
 | `flint.enablePythonAutocomplete` | boolean | `true` | Master switch for the legacy Python completion engines. Only applies when `flint.languageServer.enabled` is `false`. |
 | `flint.enableDesignerLspCompletion` | boolean | `true` | Enable Designer-sourced completions for `system.*` functions. Requires the Designer Bridge module and a [connected Designer](/getting-started/connecting-designer). Only applies when the gateway language server is disabled. |
 | `flint.enableLocalScriptCompletion` | boolean | `true` | Enable completions for project script modules indexed from the local filesystem. Works fully offline. Only applies when the gateway language server is disabled. |

@@ -70,15 +70,15 @@ The Designer WebSocket server binds to loopback only, on a dynamic port in the r
 
 ## Language server not working
 
-No completion, hover, definition, or diagnostics in Python files? The default language server talks to the gateway over HTTP — it does **not** need a Designer, but it does need a gateway and token. The proxy it uses is bundled with the extension, so there is nothing extra to install (`flint.languageServer.proxyPath` is only an advanced override).
+No completion, hover, definition, or diagnostics in Python files? The language server runs inside the Designer Bridge module on the gateway, and the extension connects to it over WebSocket — it does **not** need a Designer, but it does need a gateway, an API token, and Designer Bridge module v1.2.0 or newer. There is nothing extra to install on your workstation.
 
 Check, in order:
 
 1. **Is a gateway selected?** The language server is dormant until you pick a gateway (status bar, or **Flint: Select Gateway**).
 2. **Is `flint.languageServer.enabled` on?** It defaults to `true`. When it is `false`, Flint falls back to the legacy completion engine, which provides completion only — no hover, definition, or diagnostics.
 3. **Is an API token configured and valid?** The gateway entry in `flint.config.json` needs `modules.project-scan-endpoint.apiTokenFilePath` pointing at a token file. On 8.3 this can be a native gateway API token; on 8.1 it is the Flint-managed bearer token. See [Module Security](/module/security).
-4. **Is the gateway endpoint reachable?** Open `http://<gateway>:<port>/data/flint/health` in a browser — it is intentionally unauthenticated. If it does not respond, the module is not installed or the gateway is unreachable.
-5. **Check the logs.** The Output panel → **Flint** channel shows proxy startup, the gateway URL it targets, and authentication failures. The server restarts automatically when you change gateways or config.
+4. **Is the gateway endpoint reachable, and is the module new enough?** Open `http://<gateway>:<port>/data/flint/health` in a browser — it is intentionally unauthenticated. If it does not respond, the module is not installed or the gateway is unreachable. If it responds but `capabilities` does not include `lsp.websocket`, the module predates v1.2.0 — upgrade it.
+5. **Check the logs.** The Output panel → **Flint Language Server** channel shows the WebSocket URL it targets, connection state, and authentication failures. The connection restarts automatically when you change gateways or config.
 
 <!-- SCREENSHOT: Output panel Flint channel showing language server startup lines -->
 

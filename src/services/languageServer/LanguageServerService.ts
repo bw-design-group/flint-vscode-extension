@@ -1,22 +1,28 @@
 /**
  * @module LanguageServerService
- * @description Launches the editor-agnostic `flint-lsp-proxy` as a VS Code language client so
- * Ignition Jython (Python 2.7) scripting gets full, gateway-backed intelligence — completion,
- * hover, go-to-definition, references, diagnostics, and workspace/document symbols — sourced
- * directly from the gateway configured in `flint.config.json`. No Designer is required.
+ * @description Connects VS Code to the gateway-hosted Flint language server so Ignition Jython
+ * (Python 2.7) scripting gets full, gateway-backed intelligence — completion, hover, go-to-definition,
+ * references, diagnostics, and workspace/document symbols — sourced directly from the gateway
+ * configured in `flint.config.json`. No Designer is required.
  *
- * The proxy ships inside the extension: by default we launch the bundled `lspProxy/main.js` module
- * (see {@link BUNDLED_PROXY_MODULE}), so nothing extra needs to be installed. Power users can point
- * `flint.languageServer.proxyPath` at an external `flint-lsp-proxy` binary to override it.
- *
- * The proxy is configured entirely via environment variables. This service derives those variables
- * from the selected gateway/environment and restarts the client whenever the relevant selection or
- * configuration changes.
+ * The gateway module (Flint Designer Bridge v1.2.0+) speaks raw LSP over a WebSocket at
+ * `/system/flint-lsp`; this service connects to it directly — no local proxy process. It discovers
+ * WebSocket support via `/data/flint/health`, derives auth headers from the selected
+ * gateway/environment, and restarts the client whenever the relevant selection or configuration
+ * changes.
  */
-import * as path from 'path';
-
 import * as vscode from 'vscode';
-import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient/node';
+import {
+    CloseAction,
+    ErrorAction,
+    LanguageClient,
+    LanguageClientOptions,
+    ServerOptions,
+    type CloseHandlerResult,
+    type ErrorHandler,
+    type ErrorHandlerResult,
+    type Message
+} from 'vscode-languageclient/node';
 
 import { ServiceContainer } from '@/core/ServiceContainer';
 import { IServiceLifecycle, ServiceStatus } from '@/core/types/services';
@@ -24,21 +30,43 @@ import { WorkspaceConfigService } from '@/services/config/WorkspaceConfigService
 import { ScriptFileSystemService } from '@/services/decode/ScriptFileSystemService';
 import { EnvironmentService } from '@/services/environments/EnvironmentService';
 import { GatewayManagerService } from '@/services/gateways/GatewayManagerService';
+import { openLspStream, probeWsSupport } from '@/services/languageServer/GatewayLspSocket';
 import { readApiTokenValue } from '@/utils/gatewayHttpHelper';
 
 const CONFIG_SECTION = 'flint.languageServer';
-const EXTERNAL_PROXY_ARGS = ['--stdio'];
-/** Bundled proxy module, relative to the extension root (produced by both tsc and esbuild). */
-const BUNDLED_PROXY_MODULE = path.join('out', 'src', 'lspProxy', 'main.js');
+/** Minimum Flint Designer Bridge module version that speaks LSP over WebSocket. */
+const MIN_MODULE_VERSION = 'v1.2.0';
+/** Errors tolerated before the default handler gives up on the connection. */
+const MAX_TOLERATED_ERRORS = 3;
+/** Restarts allowed before the connection is left closed (mirrors the client's default handler). */
+const MAX_RESTART_COUNT = 4;
+/** Window (ms) over which restarts are counted before giving up. */
+const RESTART_WINDOW_MS = 3 * 60 * 1000;
+
+/** Auth header scheme for a gateway token. */
+type GatewayTokenType = 'native' | 'bearer';
+
+/** Everything needed to open an authenticated LSP WebSocket to the selected gateway. */
+interface IGatewayLspConnection {
+    /** Gateway origin (e.g. `https://gw.example.com:8043`), no trailing slash or `/data` path. */
+    gatewayUrl: string;
+    /** Auth headers sent on the WebSocket upgrade request. */
+    headers: Record<string, string>;
+    /** Accept self-signed TLS certs for this gateway (dev gateways). */
+    insecureTls: boolean;
+    /** Selected project, forwarded to the server via `initializationOptions`. */
+    project: string | undefined;
+}
 
 /**
- * Manages the Flint Jython language client, bridging VS Code to the gateway-hosted
- * language server via the `flint-lsp-proxy` stdio process.
+ * Manages the Flint Jython language client, connecting VS Code directly to the gateway-hosted
+ * language server over an authenticated WebSocket.
  */
 export class LanguageServerService implements IServiceLifecycle {
     private status: ServiceStatus = ServiceStatus.NOT_INITIALIZED;
     private client: LanguageClient | undefined;
     private outputChannel: vscode.OutputChannel | undefined;
+    private hasWarnedUnsupported = false;
     private readonly disposables: vscode.Disposable[] = [];
 
     private gatewayManager!: GatewayManagerService;
@@ -126,20 +154,36 @@ export class LanguageServerService implements IServiceLifecycle {
             return;
         }
 
-        const env = await this.buildEnvironment();
-        if (!env) {
+        const connection = await this.resolveConnection();
+        if (!connection) {
             // Not enough configuration to connect; stay dormant until the user configures a gateway.
             return;
         }
 
-        const serverOptions = this.buildServerOptions(env);
+        const probe = await probeWsSupport(connection.gatewayUrl, connection.insecureTls);
+        if (probe.lspWsPath === undefined) {
+            if (probe.reachable) {
+                this.warnUnsupportedOnce(connection.gatewayUrl);
+            } else {
+                this.log(
+                    `Gateway ${connection.gatewayUrl} is unreachable or the Flint module is not installed; ` +
+                        'language server is idle.'
+                );
+            }
+            return;
+        }
+
+        const wsUrl = this.buildWebSocketUrl(connection.gatewayUrl, probe.lspWsPath);
+        const serverOptions: ServerOptions = () => openLspStream(wsUrl, connection.headers, connection.insecureTls);
 
         const clientOptions: LanguageClientOptions = {
             documentSelector: [
                 { language: 'python', scheme: 'file' },
                 { language: 'python', scheme: ScriptFileSystemService.SCHEME }
             ],
-            outputChannel: this.outputChannel
+            outputChannel: this.outputChannel,
+            initializationOptions: { project: connection.project },
+            errorHandler: this.createErrorHandler()
         };
 
         const client = new LanguageClient('flintLanguageServer', 'Flint Language Server', serverOptions, clientOptions);
@@ -147,7 +191,7 @@ export class LanguageServerService implements IServiceLifecycle {
         try {
             await client.start();
             this.client = client;
-            this.log(`Flint language server started (gateway: ${env.FLINT_GATEWAY_URL}).`);
+            this.log(`Flint language server connected over WebSocket (${wsUrl}).`);
         } catch (error) {
             this.log(
                 `Failed to start Flint language server: ${error instanceof Error ? error.message : String(error)}`
@@ -168,38 +212,11 @@ export class LanguageServerService implements IServiceLifecycle {
     }
 
     /**
-     * Builds the language client's {@link ServerOptions}. By default it launches the proxy module
-     * bundled inside the extension (no external install). When `flint.languageServer.proxyPath` is
-     * set, it spawns that external `flint-lsp-proxy` binary instead — the legacy behavior kept for
-     * power users. Either way the gateway is configured via the same environment variables.
+     * Resolves the connection details for the selected gateway: origin URL, auth headers, TLS mode,
+     * and project. Returns undefined when there is not enough configuration to connect (no gateway
+     * selected, gateway not found, or no API token available).
      */
-    private buildServerOptions(env: Record<string, string>): ServerOptions {
-        const options = { env: { ...process.env, ...env } };
-
-        const externalProxyPath = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>('proxyPath')?.trim();
-        if (externalProxyPath !== undefined && externalProxyPath !== '') {
-            this.log(`Using external flint-lsp-proxy binary: ${externalProxyPath}`);
-            return {
-                command: externalProxyPath,
-                args: EXTERNAL_PROXY_ARGS,
-                options
-            };
-        }
-
-        const context = this.serviceContainer.get<vscode.ExtensionContext>('extensionContext');
-        const modulePath = context.asAbsolutePath(BUNDLED_PROXY_MODULE);
-        return {
-            run: { module: modulePath, transport: TransportKind.stdio, options },
-            debug: { module: modulePath, transport: TransportKind.stdio, options }
-        };
-    }
-
-    /**
-     * Derives the `flint-lsp-proxy` environment from the selected gateway and environment.
-     * Returns undefined when there is not enough configuration to connect (no gateway selected,
-     * gateway not found, or no API token available).
-     */
-    private async buildEnvironment(): Promise<Record<string, string> | undefined> {
+    private async resolveConnection(): Promise<IGatewayLspConnection | undefined> {
         const gatewayId = this.gatewayManager.getSelectedGateway();
         if (!gatewayId) {
             this.log('No gateway selected; Flint language server is idle.');
@@ -232,27 +249,88 @@ export class LanguageServerService implements IServiceLifecycle {
             return undefined;
         }
 
-        const env: Record<string, string> = {
-            FLINT_GATEWAY_URL: this.environmentService.buildGatewayUrl(gatewayConfig, ''),
-            FLINT_GATEWAY_TOKEN: token
+        const tokenType = this.resolveTokenType(token, resolved.ignitionVersion);
+        return {
+            gatewayUrl: this.environmentService.buildGatewayUrl(gatewayConfig, ''),
+            headers: this.buildAuthHeaders(token, tokenType),
+            insecureTls: resolved.ignoreSSLErrors === true,
+            project: this.gatewayManager.getSelectedProject() ?? undefined
         };
+    }
 
-        if (resolved.ignoreSSLErrors) {
-            env.FLINT_GATEWAY_INSECURE_TLS = 'true';
+    /**
+     * Determines which auth header scheme the gateway expects. Ignition 8.1 uses a Flint-managed
+     * bearer token; 8.3+ uses native platform API tokens. When the version is unknown, a
+     * `keyId:secret`-shaped token is treated as a native token; anything else as a bearer token.
+     */
+    private resolveTokenType(token: string, ignitionVersion: string | undefined): GatewayTokenType {
+        if (ignitionVersion?.startsWith('8.1') === true) {
+            return 'bearer';
         }
+        return /^[^:\s]+:[^:\s]+$/.test(token) ? 'native' : 'bearer';
+    }
 
-        // Ignition 8.1 uses a Flint-managed bearer token; 8.3+ uses native platform API tokens.
-        // When the version is unknown the proxy auto-infers, so only set it when we can be sure.
-        if (resolved.ignitionVersion) {
-            env.FLINT_GATEWAY_TOKEN_TYPE = resolved.ignitionVersion.startsWith('8.1') ? 'bearer' : 'native';
+    private buildAuthHeaders(token: string, tokenType: GatewayTokenType): Record<string, string> {
+        if (tokenType === 'native') {
+            return { 'X-Ignition-API-Token': token };
         }
+        return { Authorization: `Bearer ${token}` };
+    }
 
-        const project = this.gatewayManager.getSelectedProject();
-        if (project) {
-            env.FLINT_GATEWAY_PROJECT = project;
+    /** Maps a gateway origin to its LSP WebSocket URL (`https`→`wss`, `http`→`ws`). */
+    private buildWebSocketUrl(gatewayUrl: string, lspWsPath: string): string {
+        const wsOrigin = gatewayUrl.replace(/\/+$/, '').replace(/^http/, 'ws');
+        return wsOrigin + lspWsPath;
+    }
+
+    /**
+     * Shows a one-time (per session) warning when the gateway module is reachable but too old to
+     * serve the language server over WebSocket. Subsequent restarts only log to the output channel.
+     */
+    private warnUnsupportedOnce(gatewayUrl: string): void {
+        const message =
+            `The Flint gateway module on ${gatewayUrl} does not support the language server over WebSocket. ` +
+            `Upgrade the Flint Designer Bridge module to ${MIN_MODULE_VERSION} or newer.`;
+        this.log(message);
+        if (this.hasWarnedUnsupported) {
+            return;
         }
+        this.hasWarnedUnsupported = true;
+        void vscode.window.showWarningMessage(message);
+    }
 
-        return env;
+    /**
+     * Builds an {@link ErrorHandler} that logs connection errors and closures to the output channel
+     * while otherwise mirroring the language client's default recovery behavior: tolerate a few
+     * transient errors, then shut down; restart a bounded number of times before giving up.
+     */
+    private createErrorHandler(): ErrorHandler {
+        const restarts: number[] = [];
+        return {
+            error: (error: Error, _message: Message | undefined, count: number | undefined): ErrorHandlerResult => {
+                const occurrence = count !== undefined ? ` (occurrence ${count})` : '';
+                this.log(`Language server connection error${occurrence}: ${error.message}`);
+                if (count !== undefined && count <= MAX_TOLERATED_ERRORS) {
+                    return { action: ErrorAction.Continue };
+                }
+                return { action: ErrorAction.Shutdown };
+            },
+            closed: (): CloseHandlerResult => {
+                restarts.push(Date.now());
+                if (restarts.length <= MAX_RESTART_COUNT) {
+                    this.log('Language server connection closed; reconnecting.');
+                    return { action: CloseAction.Restart };
+                }
+                const elapsed = restarts[restarts.length - 1] - restarts[0];
+                if (elapsed <= RESTART_WINDOW_MS) {
+                    this.log('Language server connection closed too frequently; giving up until the next change.');
+                    return { action: CloseAction.DoNotRestart };
+                }
+                restarts.shift();
+                this.log('Language server connection closed; reconnecting.');
+                return { action: CloseAction.Restart };
+            }
+        };
     }
 
     private log(message: string): void {

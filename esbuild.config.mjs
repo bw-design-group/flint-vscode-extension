@@ -31,13 +31,13 @@ function resolveTypescriptPath(basePath) {
 const pathAliasPlugin = {
     name: 'path-alias',
     setup(build) {
-        build.onResolve({ filter: /^@\// }, (args) => {
+        build.onResolve({ filter: /^@\// }, args => {
             const relativePath = args.path.replace(/^@\//, 'src/');
             const absolutePath = path.resolve(__dirname, relativePath);
             const resolvedPath = resolveTypescriptPath(absolutePath);
             return { path: resolvedPath };
         });
-    },
+    }
 };
 
 /** @type {esbuild.BuildOptions} */
@@ -52,42 +52,21 @@ const extensionBuildOptions = {
     sourcemap: !production,
     minify: production,
     treeShaking: true,
-    plugins: [pathAliasPlugin],
-};
-
-/**
- * The bundled flint-lsp-proxy: a standalone Node script the extension launches as a language
- * server module. Bundled separately so its deps (vscode-languageserver, undici) ship inside the
- * .vsix and it works with zero extra install. Must NOT depend on `vscode`.
- */
-/** @type {esbuild.BuildOptions} */
-const proxyBuildOptions = {
-    entryPoints: ['src/lspProxy/main.ts'],
-    bundle: true,
-    outfile: 'out/src/lspProxy/main.js',
-    external: ['vscode'],
-    format: 'cjs',
-    platform: 'node',
-    target: 'node18',
-    sourcemap: !production,
-    minify: production,
-    treeShaking: true,
-    plugins: [pathAliasPlugin],
+    plugins: [pathAliasPlugin]
 };
 
 async function main() {
     if (watch) {
         const extensionCtx = await esbuild.context(extensionBuildOptions);
-        const proxyCtx = await esbuild.context(proxyBuildOptions);
-        await Promise.all([extensionCtx.watch(), proxyCtx.watch()]);
+        await extensionCtx.watch();
         console.log('Watching for changes...');
     } else {
-        await Promise.all([esbuild.build(extensionBuildOptions), esbuild.build(proxyBuildOptions)]);
+        await esbuild.build(extensionBuildOptions);
         console.log(production ? 'Production build complete' : 'Development build complete');
     }
 }
 
-main().catch((e) => {
+main().catch(e => {
     console.error(e);
     process.exit(1);
 });
