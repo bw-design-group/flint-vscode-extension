@@ -5,6 +5,26 @@ All notable changes to the Flint for Ignition extension will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-07-10
+
+### Added
+- Bundled the Flint language-server proxy inside the extension. The gateway-backed
+  Jython language server (completion, hover, go-to-definition, references, syntax
+  diagnostics, symbols) now works with no external installation — only a configured
+  gateway and API token are required. `flint.languageServer.proxyPath` remains an
+  advanced override for external proxy binaries.
+- Public documentation site at https://flint.bwdesigngroup.dev covering setup,
+  every feature area, the Designer Bridge module, and full configuration,
+  settings, and command references.
+- End-to-end test suite for the bundled language-server proxy
+  (`npm run test:lsp-e2e`), exercised against a live gateway.
+
+### Fixed
+- Corrected the Marketplace install identifier, version badges, settings table,
+  and keyboard-shortcut documentation in the README.
+- Replaced environment-specific hostnames in `example-flint.config.json` with
+  generic examples.
+
 ## [1.0.1] - 2026-07-09
 
 ### Changed

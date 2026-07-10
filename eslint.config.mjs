@@ -196,6 +196,20 @@ export default [
         }
     },
 
+    // Node-based end-to-end test scripts (plain ESM, run with node directly)
+    {
+        files: ['test/e2e/**/*.mjs'],
+        languageOptions: {
+            globals: {
+                process: 'readonly',
+                Buffer: 'readonly',
+                console: 'readonly',
+                setTimeout: 'readonly',
+                clearTimeout: 'readonly'
+            }
+        }
+    },
+
     // Ignore patterns
     {
         ignores: [
