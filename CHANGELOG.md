@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   diagnostics, symbols) now works with no external installation — only a configured
   gateway and API token are required. `flint.languageServer.proxyPath` remains an
   advanced override for external proxy binaries.
-- Public documentation site at https://flint.bwdesigngroup.dev covering setup,
+- Public documentation site at https://flint.docs.bwdesigngroup.dev covering setup,
   every feature area, the Designer Bridge module, and full configuration,
   settings, and command references.
 - End-to-end test suite for the bundled language-server proxy

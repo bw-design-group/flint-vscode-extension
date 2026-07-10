@@ -6,7 +6,7 @@ A powerful VS Code extension for working with Ignition SCADA/HMI projects, provi
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-^1.102.0-blue.svg)
 
-**Documentation:** Full docs are available at [flint.bwdesigngroup.dev](https://flint.bwdesigngroup.dev).
+**Documentation:** Full docs are available at [flint.docs.bwdesigngroup.dev](https://flint.docs.bwdesigngroup.dev).
 
 ## Features
 
@@ -391,7 +391,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/bw-design-group/flint-vscode-extension/issues)
-- **Documentation**: [flint.bwdesigngroup.dev](https://flint.bwdesigngroup.dev)
+- **Documentation**: [flint.docs.bwdesigngroup.dev](https://flint.docs.bwdesigngroup.dev)
 - **Discussions**: [GitHub Discussions](https://github.com/bw-design-group/flint-vscode-extension/discussions)
 
 ## Related Projects

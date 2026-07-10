@@ -21,7 +21,7 @@ const config: Config = {
     },
 
     // Set the production url of your site here
-    url: 'https://flint.bwdesigngroup.dev',
+    url: 'https://flint.docs.bwdesigngroup.dev',
     // Set the /<baseUrl>/ pathname under which your site is served
     baseUrl: '/',
 
