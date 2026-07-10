@@ -1,420 +1,222 @@
 /**
- * Flint Documentation - Custom Styling
- * Based on Ignition brand colors and modern design
+ * Flint Documentation — BW Design Group brand theme
+ *
+ * Palette sourced from the BW Design Group brand system:
+ * fox-red primary with navy/blue accents on warm cream/white surfaces.
  */
 
 :root {
-  /* Flint Brand Colors - Based on Ignition's color scheme */
-  --flint-orange: #FF6B35;
-  --flint-orange-hover: #E85A2A;
-  --flint-blue: #4A90E2;
-  --flint-light-blue: #E3F2FD;
-  --flint-gray-light: #F5F6F7;
-  --black: #000;
-  --white: #fff;
-  --light-gray: #f2f2f2;
+  /* BW Design Group brand tokens */
+  --bw-fox-red: #f15b40;
+  --bw-dark-red: #b54430;
+  --bw-navy: #27455c;
+  --bw-sky-blue: #5ab5df;
+  --bw-deep-blue: #2282ae;
+  --bw-light-blue: #b2ddf0;
+  --bw-cream: #f2f1e8;
+  --bw-warm-bg: #f7f3ec;
+  --bw-ink: #1a1918;
+  --bw-grey-text: #626262;
+  --bw-grey-line: #dddddd;
+  --bw-light-gray: #ebebeb;
 
-  /* Docusaurus Primary Color Mapping (Ignition Orange) */
-  --ifm-color-primary: #FF6B35;
-  --ifm-color-primary-dark: #FF5722;
-  --ifm-color-primary-darker: #F4511E;
-  --ifm-color-primary-darkest: #E64A19;
-  --ifm-color-primary-light: #FF8A50;
-  --ifm-color-primary-lighter: #FF9E66;
-  --ifm-color-primary-lightest: #FFB899;
+  /* Docusaurus primary ramp (computed from #F15B40) */
+  --ifm-color-primary: #f15b40;
+  --ifm-color-primary-dark: #ef4324;
+  --ifm-color-primary-darker: #ee3615;
+  --ifm-color-primary-darkest: #c72b0f;
+  --ifm-color-primary-light: #f3735c;
+  --ifm-color-primary-lighter: #f4806b;
+  --ifm-color-primary-lightest: #f7a495;
+
+  /* Surfaces & content */
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: var(--bw-warm-bg);
+  --ifm-color-content: var(--bw-ink);
+  --ifm-color-content-secondary: var(--bw-grey-text);
+  --ifm-heading-color: var(--bw-ink);
+  --ifm-font-color-base: var(--bw-ink);
+
+  /* Links: primary-darkest for AA contrast on white (raw fox-red fails AA) */
+  --ifm-link-color: var(--ifm-color-primary-darkest);
+  --ifm-link-hover-color: var(--bw-dark-red);
 
   /* Typography */
-  --ifm-font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-  --ifm-font-family-monospace: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Consolas', monospace;
-
-  /* Font Sizes */
+  --ifm-font-family-base: 'Aptos', 'Avenir Next LT Pro', -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --ifm-heading-font-family: 'Century Gothic', 'Poppins', 'Aptos Display',
+    'Avenir Next LT Pro', var(--ifm-font-family-base);
+  --ifm-font-family-monospace: 'SF Mono', Menlo, Monaco, Consolas,
+    'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
+  --ifm-heading-font-weight: 700;
   --ifm-font-size-base: 100%;
-  --ifm-heading-font-weight: 600;
   --ifm-line-height-base: 1.65;
 
   /* Layout */
   --ifm-navbar-height: 4rem;
   --ifm-spacing-horizontal: 1.5rem;
-
-  /* Code Blocks */
-  --ifm-code-font-size: 90%;
-  --docusaurus-highlighted-code-line-bg: rgba(255, 107, 53, 0.1);
-
-  /* Link Colors */
-  --ifm-link-color: var(--flint-orange);
-  --ifm-link-hover-color: var(--flint-orange-hover);
-
-  /* Background Colors */
-  --ifm-background-color: var(--white);
-  --ifm-background-surface-color: var(--flint-gray-light);
-
-  /* Text Colors */
-  --ifm-color-content: var(--black);
-  --ifm-color-content-secondary: #525252;
-
-  /* Borders */
-  --ifm-global-border-width: 1px;
-  --ifm-global-radius: 0.375rem;
-
-  /* Sidebar */
   --doc-sidebar-width: 280px;
-  --ifm-menu-color-background-active: rgba(255, 107, 53, 0.08);
-  --ifm-menu-color-background-hover: rgba(255, 107, 53, 0.05);
+  --ifm-global-border-width: 1px;
+  --ifm-global-radius: 0.25rem;
 
-  /* Table of Contents */
-  --ifm-toc-border-color: var(--light-gray);
+  /* Menu */
+  --ifm-menu-color-background-active: rgba(241, 91, 64, 0.08);
+  --ifm-menu-color-background-hover: rgba(241, 91, 64, 0.05);
+
+  /* Tables & rules */
+  --ifm-table-border-color: var(--bw-grey-line);
+  --ifm-toc-border-color: var(--bw-grey-line);
+  --ifm-hr-background-color: var(--bw-grey-line);
+  --ifm-table-head-background: var(--bw-fox-red);
+  --ifm-table-head-color: #ffffff;
+  --ifm-table-stripe-background: var(--bw-cream);
+
+  /* Code */
+  --ifm-code-font-size: 90%;
+  --docusaurus-highlighted-code-line-bg: rgba(241, 91, 64, 0.1);
 }
 
-/* Dark mode overrides */
+/* Dark mode: BW's own warm near-black, lightened fox-red accents.
+   Navy fails contrast on dark — sky/deep blue take over accent duty. */
 [data-theme='dark'] {
-  --ifm-color-primary: #FF8A50;
-  --ifm-color-primary-dark: #FF6B35;
-  --ifm-color-primary-darker: #FF5722;
-  --ifm-color-primary-darkest: #E64A19;
-  --ifm-color-primary-light: #FF9E66;
-  --ifm-color-primary-lighter: #FFAB78;
-  --ifm-color-primary-lightest: #FFC199;
+  --ifm-color-primary: #f3745e;
+  --ifm-color-primary-dark: #ef4224;
+  --ifm-color-primary-darker: #ee3616;
+  --ifm-color-primary-darkest: #c82a0f;
+  --ifm-color-primary-light: #f4806c;
+  --ifm-color-primary-lighter: #f7a597;
+  --ifm-color-primary-lightest: #fac9c0;
 
-  --ifm-background-color: #1a1a1a;
-  --ifm-background-surface-color: #242424;
+  --ifm-background-color: #1a1918;
+  --ifm-background-surface-color: #242320;
+  --ifm-color-content: #edebe7;
+  --ifm-color-content-secondary: #a5a5a5;
+  --ifm-heading-color: #edebe7;
+  --ifm-font-color-base: #edebe7;
 
-  --docusaurus-highlighted-code-line-bg: rgba(255, 107, 53, 0.15);
+  --ifm-link-color: #f7a495;
+  --ifm-link-hover-color: #fac9c0;
 
-  --ifm-menu-color-background-active: rgba(255, 138, 80, 0.15);
-  --ifm-menu-color-background-hover: rgba(255, 138, 80, 0.08);
+  --ifm-menu-color-background-active: rgba(243, 116, 94, 0.15);
+  --ifm-menu-color-background-hover: rgba(243, 116, 94, 0.08);
 
-  /* Dark mode text colors */
-  --black: #e8e8e8;
-  --ifm-color-content: #e8e8e8;
-  --ifm-color-content-secondary: #b4b4b4;
-  --ifm-font-color-base: #e8e8e8;
-
-  /* Dark mode backgrounds */
-  --flint-gray-light: #2d2d2d;
+  --ifm-table-head-background: #b54430;
+  --ifm-table-stripe-background: #242320;
+  --docusaurus-highlighted-code-line-bg: rgba(243, 116, 94, 0.15);
 }
 
-/* Navbar Styling */
+/* ---- Signature BW elements ---- */
+
+/* Fox-red divider bar under the navbar — the BW header treatment */
 .navbar {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  background-color: var(--white);
+  border-bottom: 4px solid var(--bw-fox-red);
+  box-shadow: none;
 }
 
-[data-theme='dark'] .navbar {
-  background-color: var(--ifm-background-color);
-  box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
-}
-
+/* Tint the monochrome Flint mark with brand color */
 .navbar__logo {
   height: 2.5rem;
+  color: var(--ifm-color-primary);
 }
 
 .navbar__title {
-  font-weight: 600;
+  font-family: var(--ifm-heading-font-family);
+  font-weight: 700;
   font-size: 1.25rem;
-  letter-spacing: -0.02em;
 }
 
-/* Sidebar Styling */
+/* Sidebar */
 .menu__link--active {
   font-weight: 600;
   border-left: 3px solid var(--ifm-color-primary);
   padding-left: calc(var(--ifm-menu-link-padding-horizontal) - 3px);
+  border-radius: 0;
 }
 
-.menu__list-item-collapsible:hover {
-  background-color: var(--ifm-menu-color-background-hover);
-}
-
-/* Documentation Content */
+/* Heading scale */
 article header h1 {
   font-size: 2.5rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
   margin-bottom: 1.5rem;
 }
 
 article h2 {
   font-size: 1.875rem;
-  font-weight: 600;
   margin-top: 2rem;
   margin-bottom: 1rem;
-  letter-spacing: -0.01em;
 }
 
 article h3 {
   font-size: 1.5rem;
-  font-weight: 600;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
 }
 
-/* Admonitions */
-.admonition {
-  border-radius: var(--ifm-global-radius);
+/* Uppercase, letter-spaced minor headings (BW kicker style) */
+article h4,
+article h6 {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Table headers: white uppercase on fox-red, per BW deliverables */
+table thead th {
+  background: var(--ifm-table-head-background);
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.85rem;
+}
+
+/* Flat, line-based aesthetic: no card shadows */
+.card {
+  box-shadow: none;
+  border: 1px solid var(--ifm-table-border-color);
+}
+
+/* Admonitions in BW callout style */
+.theme-admonition {
   border-left-width: 4px;
+  border-radius: 0;
+  box-shadow: none;
 }
 
-.admonition-heading {
-  font-weight: 600;
-}
-
-/* Custom admonition for VS Code specific tips */
-.admonition-vscode {
-  border-left-color: var(--flint-blue);
-  background-color: rgba(74, 144, 226, 0.05);
-}
-
-[data-theme='dark'] .admonition-vscode {
-  background-color: rgba(74, 144, 226, 0.1);
-}
-
-/* Tables */
-table {
-  display: table;
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-}
-
-table thead tr {
-  background-color: var(--flint-gray-light);
-}
-
-[data-theme='dark'] table thead tr {
-  background-color: var(--ifm-background-surface-color);
-}
-
-table th {
-  font-weight: 600;
-  text-align: left;
-  padding: 0.75rem 1rem;
-}
-
-table td {
-  padding: 0.75rem 1rem;
-  border-top: 1px solid var(--ifm-table-border-color);
-}
-
-/* Code Blocks */
-div[class^='codeBlockContainer'] {
-  border-radius: var(--ifm-global-radius);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-code {
-  border-radius: 0.25rem;
-  padding: 0.2rem 0.4rem;
-  background-color: rgba(255, 107, 53, 0.08);
-  border: 1px solid rgba(255, 107, 53, 0.15);
-  font-size: 90%;
-}
-
-[data-theme='dark'] code {
-  background-color: rgba(255, 138, 80, 0.12);
-  border-color: rgba(255, 138, 80, 0.2);
-}
-
-/* Keyboard shortcuts */
-kbd {
-  background-color: var(--ifm-background-surface-color);
-  border: 1px solid var(--ifm-color-emphasis-300);
-  border-radius: 3px;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
-  display: inline-block;
-  font-family: var(--ifm-font-family-monospace);
-  font-size: 0.85em;
-  line-height: 1;
-  padding: 2px 6px;
-  vertical-align: middle;
-}
-
-/* Mermaid Diagrams */
-.docusaurus-mermaid-container {
-  text-align: center;
-  margin: 2rem 0;
-  padding: 1rem;
-  background-color: var(--flint-gray-light);
-  border-radius: var(--ifm-global-radius);
-}
-
-[data-theme='dark'] .docusaurus-mermaid-container {
-  background-color: var(--ifm-background-surface-color);
+[data-theme='light'] .theme-admonition {
+  background: var(--bw-cream);
 }
 
 /* Footer */
-.footer {
-  background-color: var(--flint-gray-light);
-  color: var(--black);
-  padding: 2rem 0;
-  border-top: 1px solid var(--ifm-color-emphasis-200);
+.footer--dark {
+  --ifm-footer-background-color: var(--bw-ink);
 }
 
-.footer__title {
-  color: var(--black);
-  font-weight: 600;
+.footer__bw-lockup img {
+  max-height: 28px;
+  width: auto;
+  opacity: 0.85;
 }
 
-.footer__item {
-  color: var(--ifm-color-content-secondary);
+/* Hero treatment for the landing page */
+.hero--flint {
+  background: var(--bw-warm-bg);
+  color: var(--bw-ink);
+  border-bottom: 6px solid var(--bw-fox-red);
 }
 
-.footer__item:hover {
-  color: var(--flint-orange);
+[data-theme='dark'] .hero--flint {
+  background: #242320;
+  color: #edebe7;
 }
 
-.footer__link-item {
-  color: var(--ifm-color-content-secondary);
-}
-
-.footer__link-item:hover {
-  text-decoration: none;
-  color: var(--flint-orange);
-}
-
-.footer__copyright {
-  color: var(--ifm-color-content-secondary);
-  font-size: 0.875rem;
-  margin-top: 1rem;
-}
-
-/* Footer dark mode */
-[data-theme='dark'] .footer {
-  background-color: var(--ifm-background-surface-color);
-  color: var(--ifm-color-content);
-  border-top-color: var(--ifm-color-emphasis-200);
-}
-
-[data-theme='dark'] .footer__title {
-  color: var(--ifm-color-content);
-}
-
-/* Breadcrumbs */
-.breadcrumbs__item--active .breadcrumbs__link {
-  color: var(--ifm-color-content-secondary);
-}
-
-.breadcrumbs__link {
-  color: var(--flint-orange);
-}
-
-.breadcrumbs__link:hover {
-  color: var(--flint-orange-hover);
-}
-
-/* Pagination */
-.pagination-nav__link {
-  border: 1px solid var(--ifm-color-emphasis-300);
-  border-radius: var(--ifm-global-radius);
-  transition: border-color 0.2s ease;
-}
-
-.pagination-nav__link:hover {
-  border-color: var(--ifm-color-primary);
-}
-
-/* TOC (Table of Contents) */
-.table-of-contents__link--active {
-  color: var(--ifm-color-primary);
-  font-weight: 600;
-}
-
-.table-of-contents__link:hover {
-  color: var(--ifm-color-primary);
-}
-
-/* Custom Landing Page Utilities */
-.hero__title {
-  font-size: 3rem;
+.hero--flint .hero__kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--bw-grey-text);
+  font-size: 0.85rem;
   font-weight: 700;
-  letter-spacing: -0.03em;
 }
 
-.hero__subtitle {
-  font-size: 1.25rem;
-  color: var(--ifm-color-content-secondary);
-}
-
-/* Screenshot containers */
-.screenshot-container {
-  margin: 1.5rem 0;
+/* Screenshot frames: thin line border, no shadow */
+article img {
+  border: 1px solid var(--ifm-table-border-color);
   border-radius: var(--ifm-global-radius);
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.screenshot-container img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-/* Feature cards */
-.feature-card {
-  background: var(--ifm-background-surface-color);
-  border-radius: var(--ifm-global-radius);
-  padding: 1.5rem;
-  margin-bottom: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.2s ease;
-}
-
-.feature-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.feature-card h3 {
-  color: var(--flint-orange);
-  margin-top: 0;
-}
-
-/* Command reference styling */
-.command-item {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--ifm-color-emphasis-200);
-}
-
-.command-item:last-child {
-  border-bottom: none;
-}
-
-.command-name {
-  font-family: var(--ifm-font-family-monospace);
-  font-weight: 600;
-  color: var(--flint-orange);
-}
-
-.command-description {
-  font-size: 0.9rem;
-  color: var(--ifm-color-content-secondary);
-  margin-top: 0.25rem;
-}
-
-/* Responsive adjustments */
-@media (max-width: 996px) {
-  article header h1 {
-    font-size: 2rem;
-  }
-
-  article h2 {
-    font-size: 1.5rem;
-  }
-
-  article h3 {
-    font-size: 1.25rem;
-  }
-}
-
-/* Print styles */
-@media print {
-  .navbar,
-  .footer,
-  .pagination-nav,
-  .theme-doc-sidebar-container,
-  .table-of-contents {
-    display: none !important;
-  }
-
-  .main-wrapper {
-    padding: 0 !important;
-  }
 }

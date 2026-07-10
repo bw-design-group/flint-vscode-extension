@@ -9,7 +9,7 @@ This guide covers how to build and publish the Flint extension.
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 22+
 - npm
 - VS Code
 - `vsce` (Visual Studio Code Extension manager)
@@ -143,7 +143,7 @@ npm run lint
 vsce package
 
 # Show extension info
-vsce show bw-design-group.ignition-flint
+vsce show Keith-gamble.ignition-flint
 ```
 
 ## Troubleshooting

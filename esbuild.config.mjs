@@ -27,8 +27,21 @@ function resolveTypescriptPath(basePath) {
     return basePath + '.ts';
 }
 
+// Resolve @/* path aliases (from tsconfig) to src/* — used by the extension bundle.
+const pathAliasPlugin = {
+    name: 'path-alias',
+    setup(build) {
+        build.onResolve({ filter: /^@\// }, (args) => {
+            const relativePath = args.path.replace(/^@\//, 'src/');
+            const absolutePath = path.resolve(__dirname, relativePath);
+            const resolvedPath = resolveTypescriptPath(absolutePath);
+            return { path: resolvedPath };
+        });
+    },
+};
+
 /** @type {esbuild.BuildOptions} */
-const buildOptions = {
+const extensionBuildOptions = {
     entryPoints: ['src/extension.ts'],
     bundle: true,
     outfile: 'out/src/extension.js',
@@ -39,30 +52,37 @@ const buildOptions = {
     sourcemap: !production,
     minify: production,
     treeShaking: true,
-    // Handle path aliases from tsconfig (esbuild resolves @/* to src/*)
-    plugins: [
-        {
-            name: 'path-alias',
-            setup(build) {
-                // Resolve @/* imports to src/*
-                build.onResolve({ filter: /^@\// }, (args) => {
-                    const relativePath = args.path.replace(/^@\//, 'src/');
-                    const absolutePath = path.resolve(__dirname, relativePath);
-                    const resolvedPath = resolveTypescriptPath(absolutePath);
-                    return { path: resolvedPath };
-                });
-            },
-        },
-    ],
+    plugins: [pathAliasPlugin],
+};
+
+/**
+ * The bundled flint-lsp-proxy: a standalone Node script the extension launches as a language
+ * server module. Bundled separately so its deps (vscode-languageserver, undici) ship inside the
+ * .vsix and it works with zero extra install. Must NOT depend on `vscode`.
+ */
+/** @type {esbuild.BuildOptions} */
+const proxyBuildOptions = {
+    entryPoints: ['src/lspProxy/main.ts'],
+    bundle: true,
+    outfile: 'out/src/lspProxy/main.js',
+    external: ['vscode'],
+    format: 'cjs',
+    platform: 'node',
+    target: 'node18',
+    sourcemap: !production,
+    minify: production,
+    treeShaking: true,
+    plugins: [pathAliasPlugin],
 };
 
 async function main() {
     if (watch) {
-        const ctx = await esbuild.context(buildOptions);
-        await ctx.watch();
+        const extensionCtx = await esbuild.context(extensionBuildOptions);
+        const proxyCtx = await esbuild.context(proxyBuildOptions);
+        await Promise.all([extensionCtx.watch(), proxyCtx.watch()]);
         console.log('Watching for changes...');
     } else {
-        await esbuild.build(buildOptions);
+        await Promise.all([esbuild.build(extensionBuildOptions), esbuild.build(proxyBuildOptions)]);
         console.log(production ? 'Production build complete' : 'Development build complete');
     }
 }

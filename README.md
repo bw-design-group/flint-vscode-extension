@@ -2,9 +2,11 @@
 
 A powerful VS Code extension for working with Ignition SCADA/HMI projects, providing a comprehensive project browser, resource management, and development tools.
 
-![Version](https://img.shields.io/badge/version-0.0.1--SNAPSHOT-blue.svg)
+[![Version](https://img.shields.io/visual-studio-marketplace/v/Keith-gamble.ignition-flint?label=version)](https://marketplace.visualstudio.com/items?itemName=Keith-gamble.ignition-flint)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![VS Code](https://img.shields.io/badge/VS%20Code-^1.75.0-blue.svg)
+![VS Code](https://img.shields.io/badge/VS%20Code-^1.102.0-blue.svg)
+
+**Documentation:** Full docs are available at [flint.bwdesigngroup.dev](https://flint.bwdesigngroup.dev).
 
 ## Features
 
@@ -79,7 +81,7 @@ Pre-release versions (RC builds) are available for testing new features:
 
 Or via command line:
 ```bash
-code --install-extension bwdesigngroup.flint-for-ignition --pre-release
+code --install-extension Keith-gamble.ignition-flint
 ```
 
 ### From VSIX File
@@ -184,12 +186,19 @@ Configure Flint through VS Code settings (File → Preferences → Settings):
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `flint.showInheritedResources` | `true` | Show/hide inherited resources |
-| `flint.groupResourcesByType` | `true` | Group resources by type |
-| `flint.autoRefreshProjects` | `true` | Auto-refresh on file changes |
-| `flint.showEmptyResourceTypes` | `false` | Show resource types with no resources |
+| `flint.showInheritedResources` | `true` | Show inherited resources in the project browser |
+| `flint.groupResourcesByType` | `true` | Group resources by type in the project browser |
+| `flint.autoRefreshProjects` | `true` | Auto-refresh projects when files change |
+| `flint.showEmptyResourceTypes` | `false` | Show resource types even when they have no resources |
 | `flint.has83DesignerLauncher` | `false` | Enable 8.3+ Designer Launcher support |
-| `flint.kindlingExecutablePath` | `""` | Path to Kindling executable for backup viewing |
+| `flint.hasKindlingInstalled` | `false` | Whether Kindling is installed and available on PATH |
+| `flint.kindlingExecutablePath` | `""` | Custom path to Kindling executable for backup viewing |
+| `flint.languageServer.enabled` | `true` | Use the gateway-backed Flint language server (flint-lsp-proxy) for Jython completion, hover, go-to-definition, references, and diagnostics. When disabled, falls back to the legacy Designer-bridge completion |
+| `flint.languageServer.proxyPath` | `""` | Optional path to the `flint-lsp-proxy` executable (bundled with the extension; leave empty unless overriding) |
+| `flint.enablePythonAutocomplete` | `true` | Enable autocomplete for Ignition Python script modules |
+| `flint.enableDesignerLspCompletion` | `true` | Enable Designer LSP completions for system functions (requires a connected Designer with the Flint Bridge module) |
+| `flint.enableLocalScriptCompletion` | `true` | Enable local script module completions (project scripts indexed from the filesystem) |
+| `flint.decodedJson.autoCloseOriginal` | `false` | Automatically close the original JSON file when opening a decoded view |
 | `flint.configPath` | `""` | Custom path to the Flint configuration file |
 | `flint.localConfigPath` | `""` | Custom path to a local override config file |
 
@@ -270,6 +279,9 @@ Each gateway in `flint.config.json` supports:
 |---------|--------------|-------|
 | Search Resources | Ctrl+Shift+R | Cmd+Shift+R |
 | Find in Resources | Ctrl+Shift+Alt+F | Cmd+Shift+Alt+F |
+| Navigate to Script Element | Ctrl+Shift+G | Cmd+Shift+G |
+| Copy Qualified Path | Ctrl+Alt+C | Cmd+Alt+C |
+| Edit Script | Ctrl+Shift+E | Cmd+Shift+E |
 
 ## Supported Resource Types
 
@@ -379,7 +391,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/bw-design-group/flint-vscode-extension/issues)
-- **Documentation**: [Wiki](https://github.com/bw-design-group/flint-vscode-extension/wiki)
+- **Documentation**: [flint.bwdesigngroup.dev](https://flint.bwdesigngroup.dev)
 - **Discussions**: [GitHub Discussions](https://github.com/bw-design-group/flint-vscode-extension/discussions)
 
 ## Related Projects

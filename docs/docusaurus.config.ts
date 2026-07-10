@@ -7,16 +7,21 @@ import remarkCodeImport from 'remark-code-import';
 
 const config: Config = {
     title: 'Flint',
-    tagline: 'VS Code Extension for Ignition by Inductive Automation',
+    tagline: 'Develop Ignition projects in VS Code — real editing, IntelliSense, debugging, and live Designer tools',
     favicon: 'img/flint-icon.png',
 
     // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
+    // NOTE: v4 flag disabled — its SSG worker threads break theme-mermaid's
+    // useColorMode during static rendering (Hook called outside ColorModeProvider).
     future: {
-        v4: true // Improve compatibility with the upcoming Docusaurus v4
+        v4: {
+            removeLegacyPostBuildHeadAttribute: true,
+            useCssCascadeLayers: true
+        }
     },
 
     // Set the production url of your site here
-    url: 'https://your-site.example.com',
+    url: 'https://flint.bwdesigngroup.dev',
     // Set the /<baseUrl>/ pathname under which your site is served
     baseUrl: '/',
 
@@ -31,9 +36,6 @@ const config: Config = {
 
     themes: ['@docusaurus/theme-mermaid'],
 
-    // Even if you don't use internationalization, you can use this field to set
-    // useful metadata like html lang. For example, if your site is Chinese, you
-    // may want to replace "en" with "zh-Hans".
     i18n: {
         defaultLocale: 'en',
         locales: ['en']
@@ -77,6 +79,19 @@ const config: Config = {
         colorMode: {
             respectPrefersColorScheme: true
         },
+        // BW Design Group Mermaid theme (mirrors the brand PDF/deck templates)
+        mermaid: {
+            options: {
+                themeVariables: {
+                    primaryColor: '#F7F3EC',
+                    primaryBorderColor: '#F15B40',
+                    primaryTextColor: '#27455C',
+                    lineColor: '#27455C',
+                    clusterBorder: '#F15B40',
+                    titleColor: '#F15B40'
+                }
+            }
+        },
         navbar: {
             title: 'Flint',
             logo: {
@@ -86,11 +101,22 @@ const config: Config = {
             },
             items: [
                 {
+                    type: 'docSidebar',
+                    sidebarId: 'mainSidebar',
+                    position: 'left',
+                    label: 'Docs'
+                },
+                {
+                    href: 'https://marketplace.visualstudio.com/items?itemName=Keith-gamble.ignition-flint',
+                    label: 'Marketplace',
+                    position: 'right'
+                },
+                {
                     href: 'https://github.com/bw-design-group/flint-vscode-extension',
                     label: 'GitHub',
                     position: 'right'
                 },
-                { type: 'search', position: 'right' } // Add search bar to navbar
+                { type: 'search', position: 'right' }
             ]
         },
         footer: {
@@ -101,34 +127,55 @@ const config: Config = {
                     items: [
                         {
                             label: 'Getting Started',
-                            to: '/getting-started'
+                            to: '/getting-started/installation'
                         },
                         {
-                            label: 'Development',
-                            to: '/development'
+                            label: 'Configuration Reference',
+                            to: '/reference/configuration'
+                        },
+                        {
+                            label: 'Troubleshooting',
+                            to: '/troubleshooting'
                         }
                     ]
                 },
                 {
-                    title: 'Links',
+                    title: 'Components',
                     items: [
                         {
-                            label: 'GitHub',
+                            label: 'VS Code Extension',
                             href: 'https://github.com/bw-design-group/flint-vscode-extension'
                         },
                         {
+                            label: 'Designer Bridge Module',
+                            href: 'https://github.com/bw-design-group/flint-designer-bridge-ignition-module'
+                        },
+                        {
+                            label: 'Marketplace Listing',
+                            href: 'https://marketplace.visualstudio.com/items?itemName=Keith-gamble.ignition-flint'
+                        }
+                    ]
+                },
+                {
+                    title: 'Community',
+                    items: [
+                        {
                             label: 'Issues',
                             href: 'https://github.com/bw-design-group/flint-vscode-extension/issues'
+                        },
+                        {
+                            label: 'BW Design Group',
+                            href: 'https://www.bwdesigngroup.com'
                         }
                     ]
                 }
             ],
-            copyright: `Copyright © ${new Date().getFullYear()} BW Design Group.`
+            copyright: `Copyright © ${new Date().getFullYear()} BW Design Group. Released under the MIT License.`
         },
         prism: {
             theme: prismThemes.github,
             darkTheme: prismThemes.dracula,
-            additionalLanguages: ['bash', 'json', 'python', 'sql', 'yaml', 'typescript']
+            additionalLanguages: ['bash', 'json', 'python', 'sql', 'yaml', 'typescript', 'java']
         },
         docs: {
             sidebar: {

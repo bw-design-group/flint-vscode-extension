@@ -1,0 +1,21 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'docs/**' ]
+  workflow_dispatch:
+
+# Only deploy from the public repo (mirrors the marketplace publish gating).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    if: github.repository == 'bw-design-group/flint-vscode-extension'
+    uses: bw-design-group/workflows/.github/workflows/deploy-docusaurus-docs.yaml@main
+    with:
+      docs-directory: docs
+      node-version: "22"

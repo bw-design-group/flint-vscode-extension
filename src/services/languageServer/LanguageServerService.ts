@@ -5,12 +5,18 @@
  * hover, go-to-definition, references, diagnostics, and workspace/document symbols — sourced
  * directly from the gateway configured in `flint.config.json`. No Designer is required.
  *
- * The proxy is configured entirely via environment variables.
- * This service derives those variables from the selected gateway/environment and restarts the
- * client whenever the relevant selection or configuration changes.
+ * The proxy ships inside the extension: by default we launch the bundled `lspProxy/main.js` module
+ * (see {@link BUNDLED_PROXY_MODULE}), so nothing extra needs to be installed. Power users can point
+ * `flint.languageServer.proxyPath` at an external `flint-lsp-proxy` binary to override it.
+ *
+ * The proxy is configured entirely via environment variables. This service derives those variables
+ * from the selected gateway/environment and restarts the client whenever the relevant selection or
+ * configuration changes.
  */
+import * as path from 'path';
+
 import * as vscode from 'vscode';
-import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node';
+import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient/node';
 
 import { ServiceContainer } from '@/core/ServiceContainer';
 import { IServiceLifecycle, ServiceStatus } from '@/core/types/services';
@@ -21,7 +27,9 @@ import { GatewayManagerService } from '@/services/gateways/GatewayManagerService
 import { readApiTokenValue } from '@/utils/gatewayHttpHelper';
 
 const CONFIG_SECTION = 'flint.languageServer';
-const DEFAULT_PROXY_COMMAND = 'flint-lsp-proxy';
+const EXTERNAL_PROXY_ARGS = ['--stdio'];
+/** Bundled proxy module, relative to the extension root (produced by both tsc and esbuild). */
+const BUNDLED_PROXY_MODULE = path.join('out', 'src', 'lspProxy', 'main.js');
 
 /**
  * Manages the Flint Jython language client, bridging VS Code to the gateway-hosted
@@ -124,14 +132,7 @@ export class LanguageServerService implements IServiceLifecycle {
             return;
         }
 
-        const proxyCommand =
-            vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>('proxyPath')?.trim() || DEFAULT_PROXY_COMMAND;
-
-        const serverOptions: ServerOptions = {
-            command: proxyCommand,
-            args: ['--stdio'],
-            options: { env: { ...process.env, ...env } }
-        };
+        const serverOptions = this.buildServerOptions(env);
 
         const clientOptions: LanguageClientOptions = {
             documentSelector: [
@@ -164,6 +165,33 @@ export class LanguageServerService implements IServiceLifecycle {
             // Best-effort shutdown; a crashed/never-started client can throw here.
         }
         this.client = undefined;
+    }
+
+    /**
+     * Builds the language client's {@link ServerOptions}. By default it launches the proxy module
+     * bundled inside the extension (no external install). When `flint.languageServer.proxyPath` is
+     * set, it spawns that external `flint-lsp-proxy` binary instead — the legacy behavior kept for
+     * power users. Either way the gateway is configured via the same environment variables.
+     */
+    private buildServerOptions(env: Record<string, string>): ServerOptions {
+        const options = { env: { ...process.env, ...env } };
+
+        const externalProxyPath = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>('proxyPath')?.trim();
+        if (externalProxyPath !== undefined && externalProxyPath !== '') {
+            this.log(`Using external flint-lsp-proxy binary: ${externalProxyPath}`);
+            return {
+                command: externalProxyPath,
+                args: EXTERNAL_PROXY_ARGS,
+                options
+            };
+        }
+
+        const context = this.serviceContainer.get<vscode.ExtensionContext>('extensionContext');
+        const modulePath = context.asAbsolutePath(BUNDLED_PROXY_MODULE);
+        return {
+            run: { module: modulePath, transport: TransportKind.stdio, options },
+            debug: { module: modulePath, transport: TransportKind.stdio, options }
+        };
     }
 
     /**

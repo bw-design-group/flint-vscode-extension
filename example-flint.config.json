@@ -1,25 +1,25 @@
 {
     "schemaVersion": "0.2",
     "project-paths": [
-        "services/projects"
+        "ignition-data/projects"
     ],
     "gateways": {
         "frontend": {
             "id": "frontend",
-            "ignitionVersion": "8.1.33",
+            "ignitionVersion": "8.1.44",
             "environments": {
                 "local": {
-                    "host": "frontend.localtest.me",
-                    "port": 443,
-                    "ssl": true
+                    "host": "localhost",
+                    "port": 8088,
+                    "ssl": false
                 },
-                "dev": {
-                    "host": "danptstage.nead.danet",
+                "staging": {
+                    "host": "frontend.staging.example.com",
                     "port": 443,
                     "ssl": true
                 },
                 "prod": {
-                    "host": "danpt.nead.danet",
+                    "host": "frontend.example.com",
                     "port": 443,
                     "ssl": true
                 }
@@ -27,27 +27,26 @@
             "defaultEnvironment": "local",
             "enabled": true,
             "projects": [
-                "frontend-danpt",
-                "danpt-utilities",
-                "sepasoft-utilities",
-                "gateway-utilities"
+                "hmi-frontend",
+                "shared-utilities"
             ]
         },
-        "head": {
-            "id": "head",
+        "backend": {
+            "id": "backend",
+            "ignitionVersion": "8.3.1",
             "environments": {
                 "local": {
-                    "host": "enterprise-head.localtest.me",
-                    "port": 443,
-                    "ssl": true
+                    "host": "localhost",
+                    "port": 9088,
+                    "ssl": false
                 },
-                "dev": {
-                    "host": "noram.danptstage.nead.danet",
+                "staging": {
+                    "host": "backend.staging.example.com",
                     "port": 443,
                     "ssl": true
                 },
                 "prod": {
-                    "host": "noram.danpt.nead.danet",
+                    "host": "backend.example.com",
                     "port": 443,
                     "ssl": true
                 }
@@ -55,95 +54,15 @@
             "defaultEnvironment": "local",
             "enabled": true,
             "projects": [
-                "enterprise-head-danpt",
-                "danpt-utilities",
-                "sepasoft-utilities",
-                "gateway-utilities"
-            ]
-        },
-        "broker": {
-            "id": "broker",
-            "environments": {
-                "local": {
-                    "host": "broker.localtest.me",
-                    "port": 443,
-                    "ssl": true
-                },
-                "dev": {
-                    "host": "noram-mqtt.danptstage.nead.danet",
-                    "port": 443,
-                    "ssl": true
-                },
-                "prod": {
-                    "host": "noram-mqtt.danpt.nead.danet",
-                    "port": 443,
-                    "ssl": true
+                "process-backend",
+                "shared-utilities"
+            ],
+            "modules": {
+                "project-scan-endpoint": {
+                    "enabled": true,
+                    "apiTokenFilePath": "~/.ignition/tokens/backend-api-token"
                 }
-            },
-            "defaultEnvironment": "local",
-            "enabled": true,
-            "projects": [
-                "broker-simulation",
-                "danpt-utilities",
-                "sepasoft-utilities",
-                "gateway-utilities"
-            ]
-        },
-        "min": {
-            "id": "oee-backend-min",
-            "environments": {
-                "local": {
-                    "host": "oee-backend-min.localtest.me",
-                    "port": 443,
-                    "ssl": true
-                },
-                "dev": {
-                    "host": "min.danptstage.nead.danet",
-                    "port": 443,
-                    "ssl": true
-                },
-                "prod": {
-                    "host": "min.danpt.nead.danet",
-                    "port": 443,
-                    "ssl": true
-                }
-            },
-            "defaultEnvironment": "local",
-            "enabled": true,
-            "projects": [
-                "backend-danpt",
-                "danpt-utilities",
-                "sepasoft-utilities",
-                "gateway-utilities"
-            ]
-        },
-        "mtc": {
-            "id": "oee-backend-mtc",
-            "environments": {
-                "local": {
-                    "host": "oee-backend-mtc.localtest.me",
-                    "port": 443,
-                    "ssl": true
-                },
-                "dev": {
-                    "host": "mtc.danptstage.nead.danet",
-                    "port": 443,
-                    "ssl": true
-                },
-                "prod": {
-                    "host": "mtc.danpt.nead.danet",
-                    "port": 443,
-                    "ssl": true
-                }
-            },
-            "defaultEnvironment": "local",
-            "enabled": true,
-            "projects": [
-                "backend-danpt",
-                "danpt-utilities",
-                "sepasoft-utilities",
-                "gateway-utilities"
-            ]
+            }
         }
     },
     "settings": {

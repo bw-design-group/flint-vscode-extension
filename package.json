@@ -982,7 +982,7 @@
         "flint.languageServer.proxyPath": {
           "type": "string",
           "default": "",
-          "description": "Path to the flint-lsp-proxy executable. Leave empty to use 'flint-lsp-proxy' from PATH.",
+          "description": "Advanced: path to an external flint-lsp-proxy executable. Leave empty to use the proxy bundled with the extension (recommended). Only set this to override the bundled proxy with your own build.",
           "scope": "machine"
         },
         "flint.enablePythonAutocomplete": {
@@ -1188,7 +1188,10 @@
   },
   "dependencies": {
     "glob": "^8.1.0",
+    "undici": "^6.27.0",
     "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^8.1.0",
+    "vscode-languageserver-textdocument": "^1.0.12",
     "ws": "^8.19.0"
   },
   "lint-staged": {
