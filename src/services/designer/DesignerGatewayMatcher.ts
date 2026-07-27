@@ -169,10 +169,16 @@ export class DesignerGatewayMatcher implements IServiceLifecycle {
         // Check port match
         const portMatches = designerGateway.port === resolved.port;
 
-        // Check SSL match (designer omits ssl when not using TLS)
+        // Check SSL match (designer omits ssl when not using TLS).
+        //
+        // The resolver defaults `ssl` to true so connections stay on HTTPS unless told
+        // otherwise, but a config that never declares `ssl` is not asserting anything about
+        // the transport. Failing the match on that default would break the common
+        // `{host, port: 8088}` gateway, which serves plain HTTP. So a value the user never
+        // configured is treated as "matches either", and only a declared value must agree.
         const designerSsl = designerGateway.ssl ?? false;
         const gatewaySsl = resolved.ssl;
-        const sslMatches = designerSsl === gatewaySsl;
+        const sslMatches = !resolved.sslExplicit || designerSsl === gatewaySsl;
 
         const isExactMatch = hostMatches && portMatches && sslMatches;
 

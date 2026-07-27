@@ -21,9 +21,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     at environment level, or both; the environment value wins. Configurations that duplicated
     connection details across both levels to work around this keep working unchanged.
 - Environment entries may omit any field, including `host`, and inherit the gateway-level value.
+  Gateway validation previously rejected such a config outright (`Environment 'x': host is
+  required`), so the extension failed to load it. Gateway validation had drifted into two
+  parallel implementations; they are now one, so the loader and `validateGateway()` can no
+  longer disagree.
 - Gateway quick picks show the resolved host and port for multi-environment gateways instead of
   `undefined`, and mismatch messages no longer report `undefined` ports.
-- The Ignition version used for stub downloads now honours a version set on the active environment.
+- The Ignition version used for stub downloads now honours a version set on an environment
+  rather than only at gateway level, in both the automatic stub load and the manual
+  **Download Ignition Stubs** picker.
+- Designer matching no longer fails on an `ssl` value that was never configured. The resolver
+  defaults `ssl` to `true` for connections, but a gateway that does not declare `ssl` is not
+  asserting anything about its transport, so matching accepts either. A gateway that *does*
+  declare `ssl` must still agree with the Designer. This keeps the common
+  `{"host": "localhost", "port": 8088}` gateway (plain HTTP) matching as it did before.
+
+### Changed
+- The Designer status bar tooltip names the environment that matched, not just the gateway id,
+  since a Designer may be connected to an environment other than the one selected in the editor.
+- Gateway mismatch messages identify the config side as `Config <gateway>/<environment>` instead
+  of `Config`.
 
 ## [1.2.0] - 2026-07-10
 

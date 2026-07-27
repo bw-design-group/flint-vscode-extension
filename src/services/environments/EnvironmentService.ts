@@ -41,6 +41,12 @@ export interface ResolvedEnvironmentConfig {
     readonly port: number;
     /** Whether to use SSL/HTTPS */
     readonly ssl: boolean;
+    /**
+     * Whether `ssl` was actually declared at either level, as opposed to falling back to
+     * the default. Connecting always uses {@link ssl}; Designer matching uses this to avoid
+     * failing on a value the user never configured. See DesignerGatewayMatcher.
+     */
+    readonly sslExplicit: boolean;
     /** Username for authentication */
     readonly username?: string;
     /** Whether to ignore SSL certificate errors */
@@ -285,11 +291,14 @@ export class EnvironmentService implements IServiceLifecycle {
         envConfig?: GatewayEnvironmentConfig
     ): Pick<
         ResolvedEnvironmentConfig,
-        'port' | 'ssl' | 'username' | 'ignoreSSLErrors' | 'timeoutMs' | 'ignitionVersion'
+        'port' | 'ssl' | 'sslExplicit' | 'username' | 'ignoreSSLErrors' | 'timeoutMs' | 'ignitionVersion'
     > {
+        const declaredSsl = envConfig?.ssl ?? gatewayConfig.ssl;
+
         return {
             port: envConfig?.port ?? gatewayConfig.port ?? 8088,
-            ssl: envConfig?.ssl ?? gatewayConfig.ssl ?? true,
+            ssl: declaredSsl ?? true,
+            sslExplicit: declaredSsl !== undefined,
             username: envConfig?.username ?? gatewayConfig.username,
             ignoreSSLErrors: envConfig?.ignoreSSLErrors ?? gatewayConfig.ignoreSSLErrors ?? false,
             timeoutMs: envConfig?.timeoutMs ?? gatewayConfig.timeoutMs ?? 10000,

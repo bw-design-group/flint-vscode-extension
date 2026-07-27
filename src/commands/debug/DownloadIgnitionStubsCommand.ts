@@ -9,6 +9,7 @@ import { Command } from '@/commands/base/Command';
 import { COMMANDS } from '@/core/constants';
 import { CommandContext } from '@/core/types/commands';
 import { WorkspaceConfigService } from '@/services/config/WorkspaceConfigService';
+import { EnvironmentService } from '@/services/environments/EnvironmentService';
 import { IgnitionStubsManagerService } from '@/services/python/IgnitionStubsManagerService';
 
 /**
@@ -17,11 +18,13 @@ import { IgnitionStubsManagerService } from '@/services/python/IgnitionStubsMana
 export class DownloadIgnitionStubsCommand extends Command {
     private readonly stubsManager?: IgnitionStubsManagerService;
     private readonly configService?: WorkspaceConfigService;
+    private readonly environmentService?: EnvironmentService;
 
     constructor(context: CommandContext) {
         super(COMMANDS.DOWNLOAD_IGNITION_STUBS, context);
         this.stubsManager = context.services.get<IgnitionStubsManagerService>('IgnitionStubsManagerService');
         this.configService = context.services.get<WorkspaceConfigService>('WorkspaceConfigService');
+        this.environmentService = context.services.get<EnvironmentService>('EnvironmentService');
     }
 
     protected async executeImpl(): Promise<void> {
@@ -37,7 +40,17 @@ export class DownloadIgnitionStubsCommand extends Command {
             try {
                 const gateways = await this.configService.getGateways();
                 for (const gateway of Object.values(gateways)) {
-                    if (gateway.ignitionVersion) {
+                    // Offer every environment's version, since a version may be declared only
+                    // on an environment rather than at gateway level.
+                    const resolved = this.environmentService?.resolveAllEnvironmentConfigs(gateway) ?? [];
+                    for (const environment of resolved) {
+                        if (environment.ignitionVersion) {
+                            availableVersions.add(environment.ignitionVersion);
+                        }
+                    }
+
+                    // Fall back to the raw value when the gateway has no resolvable environment
+                    if (resolved.length === 0 && gateway.ignitionVersion) {
                         availableVersions.add(gateway.ignitionVersion);
                     }
                 }

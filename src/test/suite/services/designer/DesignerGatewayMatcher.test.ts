@@ -207,6 +207,54 @@ suite('DesignerGatewayMatcher Test Suite', () => {
             assert.strictEqual(match.projectMatched, true);
         });
 
+        test('Matches a plain-HTTP Designer when the config never declares ssl', async () => {
+            // The resolver defaults ssl to true, but this config asserts nothing about the
+            // transport. Port 8088 serves plain HTTP on a default Ignition gateway, so
+            // failing the match on that default would break the most common setup.
+            const gateway = createGateway({ id: 'gw', host: 'localhost', port: 8088 });
+            const matcher = await createMatcher({ gw: gateway });
+
+            const match = await matcher.matchDesignerToGateway(createDesigner({ ssl: false }));
+
+            assert.strictEqual(match.isExactMatch, true, match.mismatchReason ?? '');
+            assert.strictEqual(match.gatewayId, 'gw');
+        });
+
+        test('Matches an HTTPS Designer when the config never declares ssl', async () => {
+            const gateway = createGateway({ id: 'gw', host: 'localhost', port: 8088 });
+            const matcher = await createMatcher({ gw: gateway });
+
+            const match = await matcher.matchDesignerToGateway(createDesigner({ ssl: true }));
+
+            assert.strictEqual(match.isExactMatch, true, match.mismatchReason ?? '');
+        });
+
+        test('Still reports an SSL mismatch when ssl is declared explicitly', async () => {
+            const gateway = createGateway({ id: 'gw', host: 'localhost', port: 8088, ssl: true });
+            const matcher = await createMatcher({ gw: gateway });
+
+            const match = await matcher.matchDesignerToGateway(createDesigner({ ssl: false }));
+
+            assert.strictEqual(match.isExactMatch, false);
+            assert.match(match.mismatchReason ?? '', /SSL mismatch/);
+        });
+
+        test('Honours ssl declared only at gateway level for an inheriting environment', async () => {
+            const gateway = createGateway({
+                id: 'gw',
+                host: 'localhost',
+                port: 8088,
+                ssl: true,
+                environments: { local: {} }
+            });
+            const matcher = await createMatcher({ gw: gateway });
+
+            const match = await matcher.matchDesignerToGateway(createDesigner({ ssl: false }));
+
+            assert.strictEqual(match.isExactMatch, false);
+            assert.match(match.mismatchReason ?? '', /SSL mismatch/);
+        });
+
         test('Reports no resolvable host when every gateway is unconfigured', async () => {
             const matcher = await createMatcher({ gw: createGateway({ id: 'gw', projects: ['example-project'] }) });
 

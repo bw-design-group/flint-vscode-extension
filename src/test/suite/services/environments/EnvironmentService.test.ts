@@ -263,6 +263,37 @@ suite('EnvironmentService Test Suite', () => {
         test('Reports the gateway id on the resolved config', () => {
             assert.strictEqual(service.resolveEnvironmentConfig(legacyGateway()).gatewayId, 'example-gateway');
         });
+
+        test('Flags ssl as not explicitly declared when it is absent at both levels', () => {
+            const resolved = service.resolveEnvironmentConfig(createGateway({ id: 'gw', host: 'localhost' }));
+
+            assert.strictEqual(resolved.ssl, true, 'connections still default to HTTPS');
+            assert.strictEqual(resolved.sslExplicit, false, 'but nothing was actually declared');
+        });
+
+        test('Flags ssl as explicit when declared at gateway level', () => {
+            const resolved = service.resolveEnvironmentConfig(
+                createGateway({ id: 'gw', host: 'localhost', ssl: false })
+            );
+
+            assert.strictEqual(resolved.ssl, false);
+            assert.strictEqual(resolved.sslExplicit, true);
+        });
+
+        test('Flags ssl as explicit when declared only on the environment', () => {
+            const gateway = createGateway({ id: 'gw', host: 'localhost', environments: { local: { ssl: false } } });
+            const resolved = service.resolveEnvironmentConfig(gateway, 'local');
+
+            assert.strictEqual(resolved.ssl, false);
+            assert.strictEqual(resolved.sslExplicit, true);
+        });
+
+        test('An environment inherits an explicitly declared gateway-level ssl', () => {
+            const gateway = createGateway({ id: 'gw', host: 'localhost', ssl: true, environments: { local: {} } });
+            const resolved = service.resolveEnvironmentConfig(gateway, 'local');
+
+            assert.strictEqual(resolved.sslExplicit, true);
+        });
     });
 
     // ========================================================================

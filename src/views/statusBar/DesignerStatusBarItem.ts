@@ -216,15 +216,21 @@ export class DesignerStatusBarItem implements IServiceLifecycle {
 
         // Add match status
         if (matchResult) {
+            // A Designer connects to one endpoint, which need not be the environment
+            // selected in the editor, so name the environment that actually matched.
+            const gatewayLabel = matchResult.environment
+                ? `${matchResult.gatewayId} (${matchResult.environment})`
+                : matchResult.gatewayId;
+
             if (matchResult.isExactMatch && matchResult.projectMatched) {
                 lines.push('\u2713 Gateway configuration matched');
                 if (matchResult.gatewayId) {
-                    lines.push(`  Gateway: ${matchResult.gatewayId}`);
+                    lines.push(`  Gateway: ${gatewayLabel}`);
                 }
             } else if (matchResult.isExactMatch) {
                 lines.push('\u26A0 Gateway matched, but project not in configuration');
                 if (matchResult.gatewayId) {
-                    lines.push(`  Gateway: ${matchResult.gatewayId}`);
+                    lines.push(`  Gateway: ${gatewayLabel}`);
                 }
             } else {
                 lines.push('\u26A0 No matching gateway configuration');
