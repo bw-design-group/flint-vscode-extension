@@ -187,6 +187,7 @@ export class ConfigValidationService implements IServiceLifecycle {
         if (!gateway.environments) {
             return;
         }
+        const hasGatewayHost = typeof gateway.host === 'string' && gateway.host.length > 0;
 
         if (typeof gateway.environments !== 'object' || gateway.environments === null) {
             errors.push('Gateway environments must be an object');
@@ -201,13 +202,18 @@ export class ConfigValidationService implements IServiceLifecycle {
 
         // Validate each environment
         for (const [envName, envConfig] of Object.entries(gateway.environments)) {
-            this.validateSingleEnvironment(envName, envConfig, errors);
+            this.validateSingleEnvironment(envName, envConfig, hasGatewayHost, errors);
         }
 
         this.validateDefaultEnvironment(gateway, errors);
     }
 
-    private validateSingleEnvironment(envName: string, envConfig: unknown, errors: string[]): void {
+    private validateSingleEnvironment(
+        envName: string,
+        envConfig: unknown,
+        hasGatewayHost: boolean,
+        errors: string[]
+    ): void {
         if (!envName || typeof envName !== 'string') {
             errors.push('Environment name must be a non-empty string');
             return;
@@ -220,8 +226,11 @@ export class ConfigValidationService implements IServiceLifecycle {
 
         const env = envConfig as Record<string, unknown>;
 
-        if (!env.host || typeof env.host !== 'string') {
-            errors.push(`Environment '${envName}': host is required and must be a string`);
+        // An environment may omit host and inherit the gateway-level one
+        if (env.host !== undefined && typeof env.host !== 'string') {
+            errors.push(`Environment '${envName}': host must be a string`);
+        } else if (env.host === undefined && !hasGatewayHost) {
+            errors.push(`Environment '${envName}': host is required when the gateway does not define a top-level host`);
         }
 
         this.validatePortNumber(env.port, `Environment '${envName}':`, errors);

@@ -10,6 +10,7 @@ import { COMMANDS } from '@/core/constants/commands';
 import { FlintError } from '@/core/errors';
 import { CommandContext } from '@/core/types/commands';
 import { WorkspaceConfigService } from '@/services/config/WorkspaceConfigService';
+import { EnvironmentService } from '@/services/environments/EnvironmentService';
 import { GatewayManagerService } from '@/services/gateways/GatewayManagerService';
 
 /**
@@ -24,6 +25,7 @@ export class SelectGatewayCommand extends Command {
         try {
             const gatewayManager = this.getService<GatewayManagerService>('GatewayManagerService');
             const configService = this.getService<WorkspaceConfigService>('WorkspaceConfigService');
+            const environmentService = this.getService<EnvironmentService>('EnvironmentService');
 
             // Get available gateways
             const gateways = await configService.getGateways();
@@ -54,12 +56,23 @@ export class SelectGatewayCommand extends Command {
             const currentGateway = gatewayManager.getSelectedGateway();
 
             // Create quick pick items
-            const items = gatewayEntries.map(([id, config]) => ({
-                label: id,
-                description: `${config.host}${config.port !== undefined && config.port > 0 ? `:${config.port}` : ''}`,
-                detail: `${config.projects?.length ?? 0} project(s) configured${currentGateway === id ? ' (current)' : ''}`,
-                gatewayId: id
-            }));
+            const items = gatewayEntries.map(([id, config]) => {
+                // Resolve so multi-environment gateways show their active endpoint, not "undefined"
+                let description: string;
+                try {
+                    const resolved = environmentService.getActiveEnvironmentConfig(config);
+                    description = `${resolved.host}:${resolved.port}`;
+                } catch {
+                    description = 'No host configured';
+                }
+
+                return {
+                    label: id,
+                    description,
+                    detail: `${config.projects?.length ?? 0} project(s) configured${currentGateway === id ? ' (current)' : ''}`,
+                    gatewayId: id
+                };
+            });
 
             // Show selection dialog
             const selected = await vscode.window.showQuickPick(items, {

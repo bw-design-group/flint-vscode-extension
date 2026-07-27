@@ -58,7 +58,7 @@
                             "properties": {
                                 "host": {
                                     "type": "string",
-                                    "description": "Gateway host URL or IP address for this environment"
+                                    "description": "Gateway host URL or IP address for this environment (falls back to the gateway-level host when omitted)"
                                 },
                                 "port": {
                                     "type": "integer",
@@ -90,6 +90,10 @@
                                         "project-scan-endpoint": {
                                             "type": "object",
                                             "properties": {
+                                                "enabled": {
+                                                    "type": "boolean",
+                                                    "description": "Whether the project-scan-endpoint module is installed (overrides the gateway-level value)"
+                                                },
                                                 "apiTokenFilePath": {
                                                     "type": "string",
                                                     "description": "Path to API token file for Ignition 8.3+ Gateway API authentication (absolute or relative to workspace root)"
@@ -100,16 +104,13 @@
                                                     "description": "Whether to force update designers when scanning (module endpoint only, default: false)"
                                                 }
                                             },
-                                            "description": "Project scan endpoint module configuration for this environment"
+                                            "description": "Project scan endpoint module configuration for this environment (overrides gateway-level values)"
                                         }
                                     },
                                     "description": "Module configurations for this environment"
                                 }
                             },
-                            "required": [
-                                "host"
-                            ],
-                            "description": "Environment-specific gateway configuration"
+                            "description": "Environment-specific gateway configuration. Any omitted field falls back to the gateway-level value."
                         },
                         "description": "Multiple environments for this gateway"
                     },
@@ -144,12 +145,21 @@
                                         "type": "boolean",
                                         "default": false,
                                         "description": "Whether the project-scan-endpoint module is installed on this gateway"
+                                    },
+                                    "apiTokenFilePath": {
+                                        "type": "string",
+                                        "description": "Path to API token file for Ignition 8.3+ Gateway API authentication (absolute or relative to workspace root). Used by every environment that does not override it."
+                                    },
+                                    "forceUpdateDesigner": {
+                                        "type": "boolean",
+                                        "default": false,
+                                        "description": "Whether to force update designers when scanning (module endpoint only, default: false)"
                                     }
                                 },
-                                "description": "Project scan endpoint module configuration"
+                                "description": "Project scan endpoint module configuration. Environment-level values override these."
                             }
                         },
-                        "description": "Module configurations for this gateway"
+                        "description": "Module configurations for this gateway (defaults for all environments)"
                     }
                 },
                 "anyOf": [

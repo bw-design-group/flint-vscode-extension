@@ -230,12 +230,23 @@ export class LanguageServerService implements IServiceLifecycle {
             return undefined;
         }
 
-        const resolved = this.environmentService.getActiveEnvironmentConfig(gatewayConfig);
-        const tokenFilePath = resolved.modules?.['project-scan-endpoint']?.apiTokenFilePath;
+        let resolved;
+        try {
+            resolved = this.environmentService.getActiveEnvironmentConfig(gatewayConfig);
+        } catch (error) {
+            this.log(
+                `Could not resolve configuration for gateway '${gatewayId}': ` +
+                    `${error instanceof Error ? error.message : String(error)}`
+            );
+            return undefined;
+        }
+
+        const tokenFilePath = resolved.modules['project-scan-endpoint'].apiTokenFilePath;
         if (!tokenFilePath) {
             this.log(
                 `Gateway '${gatewayId}' has no API token configured ` +
-                    "(modules['project-scan-endpoint'].apiTokenFilePath); Flint language server is idle."
+                    "(modules['project-scan-endpoint'].apiTokenFilePath, at gateway or environment level); " +
+                    'Flint language server is idle.'
             );
             return undefined;
         }
@@ -251,7 +262,7 @@ export class LanguageServerService implements IServiceLifecycle {
 
         const tokenType = this.resolveTokenType(token, resolved.ignitionVersion);
         return {
-            gatewayUrl: this.environmentService.buildGatewayUrl(gatewayConfig, ''),
+            gatewayUrl: EnvironmentService.buildUrl(resolved, ''),
             headers: this.buildAuthHeaders(token, tokenType),
             insecureTls: resolved.ignoreSSLErrors === true,
             project: this.gatewayManager.getSelectedProject() ?? undefined

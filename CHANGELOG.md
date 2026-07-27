@@ -5,6 +5,26 @@ All notable changes to the Flint for Ignition extension will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Gateway configuration is now resolved once into a single object that every consumer reads
+  from, so gateway-level and environment-level settings no longer disagree.
+  - `modules['project-scan-endpoint'].apiTokenFilePath` is now readable on a gateway that has no
+    `environments` block. Previously it resolved to `undefined` no matter where it was declared,
+    which silently idled the language server and fell back to offline completion.
+  - Designer matching now uses resolved configuration, so a gateway that declares its host inside
+    `environments` is matched instead of being rejected with "has no host configured". A Designer
+    is matched against every configured environment, not just the selected one, and the match
+    result reports which environment it matched.
+  - `enabled`, `apiTokenFilePath`, and `forceUpdateDesigner` may each be declared at gateway level,
+    at environment level, or both; the environment value wins. Configurations that duplicated
+    connection details across both levels to work around this keep working unchanged.
+- Environment entries may omit any field, including `host`, and inherit the gateway-level value.
+- Gateway quick picks show the resolved host and port for multi-environment gateways instead of
+  `undefined`, and mismatch messages no longer report `undefined` ports.
+- The Ignition version used for stub downloads now honours a version set on the active environment.
+
 ## [1.2.0] - 2026-07-10
 
 ### Added

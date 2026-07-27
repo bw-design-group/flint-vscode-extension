@@ -5,14 +5,16 @@
  */
 
 import { CONFIG_SCHEMA_VERSIONS } from '@/core/constants';
-import { GatewayEnvironmentModules, GatewayModules } from '@/core/types/modules';
+import { GatewayModules } from '@/core/types/modules';
 
 /**
  * Environment-specific gateway configuration
+ *
+ * Every field is optional: an omitted field falls back to the gateway-level value.
  */
 export interface GatewayEnvironmentConfig {
-    /** Gateway hostname or IP address for this environment */
-    readonly host: string;
+    /** Gateway hostname or IP address for this environment (defaults to the gateway-level host) */
+    readonly host?: string;
     /** Gateway port number (default: 8088) */
     readonly port?: number;
     /** Whether to use SSL/HTTPS */
@@ -25,8 +27,8 @@ export interface GatewayEnvironmentConfig {
     readonly timeoutMs?: number;
     /** Ignition version for this environment (e.g., '8.1.33', '8.3.2') */
     readonly ignitionVersion?: string;
-    /** Module configurations for this environment */
-    readonly modules?: GatewayEnvironmentModules;
+    /** Module configurations for this environment (override gateway-level module settings) */
+    readonly modules?: GatewayModules;
 }
 
 /**

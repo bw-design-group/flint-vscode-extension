@@ -23,27 +23,36 @@ interface EnvironmentSelection {
 }
 
 /**
- * Resolved environment configuration with merged settings
+ * Fully resolved gateway configuration for a single environment.
+ *
+ * This is the single object every consumer (LSP connection, Designer matcher, scan
+ * endpoint, status bar, quick picks) reads from. Values are merged as
+ * `environment ?? gateway ?? default`, so no consumer should reach back into the raw
+ * {@link GatewayConfig} for a connection or module field.
  */
 export interface ResolvedEnvironmentConfig {
+    /** Gateway id this configuration was resolved from */
+    readonly gatewayId: string;
     /** Environment name */
-    environment: string;
+    readonly environment: string;
     /** Gateway hostname or IP address */
-    host: string;
+    readonly host: string;
     /** Gateway port number */
-    port: number;
+    readonly port: number;
     /** Whether to use SSL/HTTPS */
-    ssl: boolean;
+    readonly ssl: boolean;
     /** Username for authentication */
-    username?: string;
+    readonly username?: string;
     /** Whether to ignore SSL certificate errors */
-    ignoreSSLErrors: boolean;
+    readonly ignoreSSLErrors: boolean;
     /** Connection timeout in milliseconds */
-    timeoutMs: number;
+    readonly timeoutMs: number;
     /** Ignition version for this environment */
-    ignitionVersion?: string;
-    /** Module configurations for this environment (merged from gateway and environment) */
-    modules?: ResolvedModules;
+    readonly ignitionVersion?: string;
+    /** Projects available on this gateway */
+    readonly projects: readonly string[];
+    /** Module configurations (merged from gateway and environment) */
+    readonly modules: ResolvedModules;
 }
 
 /**
@@ -197,22 +206,14 @@ export class EnvironmentService implements IServiceLifecycle {
      * Handles both legacy and multi-environment formats
      */
     resolveEnvironmentConfig(gatewayConfig: GatewayConfig, environmentName?: string): ResolvedEnvironmentConfig {
-        if (gatewayConfig.environments) {
-            return this.resolveMultiEnvironmentConfig(gatewayConfig, environmentName);
+        if (!gatewayConfig.environments) {
+            // Legacy single-environment format: gateway-level values are the only source.
+            return this.mergeConfig(gatewayConfig, EnvironmentService.DEFAULT_ENVIRONMENT);
         }
-        return this.resolveLegacyConfig(gatewayConfig);
-    }
 
-    /**
-     * Resolves configuration for multi-environment format
-     */
-    private resolveMultiEnvironmentConfig(
-        gatewayConfig: GatewayConfig,
-        environmentName?: string
-    ): ResolvedEnvironmentConfig {
         const envName =
-            environmentName ?? gatewayConfig.defaultEnvironment ?? Object.keys(gatewayConfig.environments!)[0];
-        const envConfig = gatewayConfig.environments![envName];
+            environmentName ?? gatewayConfig.defaultEnvironment ?? Object.keys(gatewayConfig.environments)[0];
+        const envConfig = gatewayConfig.environments[envName];
 
         if (!envConfig) {
             throw new FlintError(
@@ -221,37 +222,78 @@ export class EnvironmentService implements IServiceLifecycle {
             );
         }
 
+        return this.mergeConfig(gatewayConfig, envName, envConfig);
+    }
+
+    /**
+     * Resolves every configured environment for a gateway.
+     *
+     * Environments that cannot be resolved (for example, no host at either level) are
+     * skipped rather than throwing, so one broken environment does not hide the others.
+     * A legacy gateway yields a single entry for the `default` environment.
+     */
+    resolveAllEnvironmentConfigs(gatewayConfig: GatewayConfig): ResolvedEnvironmentConfig[] {
+        const resolved: ResolvedEnvironmentConfig[] = [];
+
+        for (const envName of this.getAvailableEnvironments(gatewayConfig)) {
+            try {
+                resolved.push(this.resolveEnvironmentConfig(gatewayConfig, envName));
+            } catch {
+                // Skip environments that are not resolvable; other environments may still match.
+            }
+        }
+
+        return resolved;
+    }
+
+    /**
+     * Merges gateway-level defaults with environment-level overrides into the single
+     * object all consumers read from.
+     *
+     * @param envConfig The environment being resolved, or undefined for a legacy gateway
+     */
+    private mergeConfig(
+        gatewayConfig: GatewayConfig,
+        environment: string,
+        envConfig?: GatewayEnvironmentConfig
+    ): ResolvedEnvironmentConfig {
+        const host = envConfig?.host ?? gatewayConfig.host;
+        if (!host) {
+            throw new FlintError(
+                `No host configured for gateway '${gatewayConfig.id}'${
+                    envConfig ? ` environment '${environment}'` : ''
+                }`,
+                'GATEWAY_HOST_NOT_CONFIGURED'
+            );
+        }
+
         return {
-            environment: envName,
-            host: this.normalizeHost(envConfig.host),
-            port: envConfig.port ?? 8088,
-            ssl: envConfig.ssl ?? true,
-            username: envConfig.username ?? gatewayConfig.username,
-            ignoreSSLErrors: envConfig.ignoreSSLErrors ?? gatewayConfig.ignoreSSLErrors ?? false,
-            timeoutMs: envConfig.timeoutMs ?? gatewayConfig.timeoutMs ?? 10000,
-            ignitionVersion: envConfig.ignitionVersion ?? gatewayConfig.ignitionVersion,
+            gatewayId: gatewayConfig.id,
+            environment,
+            host: this.normalizeHost(host),
+            ...this.mergeConnectionSettings(gatewayConfig, envConfig),
+            projects: gatewayConfig.projects ?? [],
             modules: this.buildResolvedModules(gatewayConfig, envConfig)
         };
     }
 
     /**
-     * Resolves configuration for legacy single-environment format
+     * Merges the connection settings other than host, applying the documented defaults
      */
-    private resolveLegacyConfig(gatewayConfig: GatewayConfig): ResolvedEnvironmentConfig {
-        if (!gatewayConfig.host) {
-            throw new FlintError(`No host configured for gateway '${gatewayConfig.id}'`, 'GATEWAY_HOST_NOT_CONFIGURED');
-        }
-
+    private mergeConnectionSettings(
+        gatewayConfig: GatewayConfig,
+        envConfig?: GatewayEnvironmentConfig
+    ): Pick<
+        ResolvedEnvironmentConfig,
+        'port' | 'ssl' | 'username' | 'ignoreSSLErrors' | 'timeoutMs' | 'ignitionVersion'
+    > {
         return {
-            environment: EnvironmentService.DEFAULT_ENVIRONMENT,
-            host: this.normalizeHost(gatewayConfig.host),
-            port: gatewayConfig.port ?? 8088,
-            ssl: gatewayConfig.ssl ?? true,
-            username: gatewayConfig.username,
-            ignoreSSLErrors: gatewayConfig.ignoreSSLErrors ?? false,
-            timeoutMs: gatewayConfig.timeoutMs ?? 10000,
-            ignitionVersion: gatewayConfig.ignitionVersion,
-            modules: this.buildResolvedModules(gatewayConfig)
+            port: envConfig?.port ?? gatewayConfig.port ?? 8088,
+            ssl: envConfig?.ssl ?? gatewayConfig.ssl ?? true,
+            username: envConfig?.username ?? gatewayConfig.username,
+            ignoreSSLErrors: envConfig?.ignoreSSLErrors ?? gatewayConfig.ignoreSSLErrors ?? false,
+            timeoutMs: envConfig?.timeoutMs ?? gatewayConfig.timeoutMs ?? 10000,
+            ignitionVersion: envConfig?.ignitionVersion ?? gatewayConfig.ignitionVersion
         };
     }
 
@@ -264,16 +306,22 @@ export class EnvironmentService implements IServiceLifecycle {
     }
 
     /**
-     * Builds resolved modules by merging gateway and environment configurations
+     * Builds resolved modules by merging gateway and environment configurations.
+     * Every field uses the same `environment ?? gateway ?? default` precedence, so
+     * `enabled` and `apiTokenFilePath` can be declared at whichever level suits the user.
+     *
      * Note: Module names are defined in the type system (see modules.ts)
      * To add new modules, update modules.ts types and extend this method
      */
     private buildResolvedModules(gatewayConfig: GatewayConfig, envConfig?: GatewayEnvironmentConfig): ResolvedModules {
+        const gatewayModule = gatewayConfig.modules?.['project-scan-endpoint'];
+        const envModule = envConfig?.modules?.['project-scan-endpoint'];
+
         return {
             'project-scan-endpoint': {
-                enabled: gatewayConfig.modules?.['project-scan-endpoint']?.enabled ?? false,
-                apiTokenFilePath: envConfig?.modules?.['project-scan-endpoint']?.apiTokenFilePath,
-                forceUpdateDesigner: envConfig?.modules?.['project-scan-endpoint']?.forceUpdateDesigner ?? false
+                enabled: envModule?.enabled ?? gatewayModule?.enabled ?? false,
+                apiTokenFilePath: envModule?.apiTokenFilePath ?? gatewayModule?.apiTokenFilePath,
+                forceUpdateDesigner: envModule?.forceUpdateDesigner ?? gatewayModule?.forceUpdateDesigner ?? false
             }
         };
     }
@@ -291,7 +339,15 @@ export class EnvironmentService implements IServiceLifecycle {
      * Builds the gateway URL for the active environment
      */
     buildGatewayUrl(gatewayConfig: GatewayConfig, path: string = ''): string {
-        const envConfig = this.getActiveEnvironmentConfig(gatewayConfig);
+        return EnvironmentService.buildUrl(this.getActiveEnvironmentConfig(gatewayConfig), path);
+    }
+
+    /**
+     * Builds a gateway URL from an already-resolved configuration.
+     * Prefer this when the caller has resolved the config, so the URL and the rest of the
+     * connection details come from the same resolution.
+     */
+    static buildUrl(envConfig: ResolvedEnvironmentConfig, path: string = ''): string {
         const protocol = envConfig.ssl ? 'https' : 'http';
         const portSuffix = envConfig.port !== (envConfig.ssl ? 443 : 80) ? `:${envConfig.port}` : '';
         return `${protocol}://${envConfig.host}${portSuffix}${path}`;

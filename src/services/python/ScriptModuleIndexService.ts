@@ -15,9 +15,11 @@ import { PythonASTService, PythonSymbol } from './PythonASTService';
 
 import { FlintError } from '@/core/errors';
 import { ServiceContainer } from '@/core/ServiceContainer';
+import { GatewayConfig } from '@/core/types/configuration';
 import { IServiceLifecycle, ServiceStatus } from '@/core/types/services';
 import { ProjectScanResult, ProjectScannerService } from '@/services/config/ProjectScannerService';
 import { WorkspaceConfigService } from '@/services/config/WorkspaceConfigService';
+import { EnvironmentService } from '@/services/environments/EnvironmentService';
 import { GatewayManagerService } from '@/services/gateways/GatewayManagerService';
 
 /**
@@ -72,6 +74,7 @@ export class ScriptModuleIndexService implements IServiceLifecycle {
     private ignitionStubsManagerService?: IgnitionStubsManagerService;
     private gatewayManagerService?: GatewayManagerService;
     private configService?: WorkspaceConfigService;
+    private environmentService?: EnvironmentService;
 
     private readonly indexUpdateEmitter = new vscode.EventEmitter<ProjectModuleIndex>();
     public readonly onIndexUpdate = this.indexUpdateEmitter.event;
@@ -85,6 +88,7 @@ export class ScriptModuleIndexService implements IServiceLifecycle {
             this.serviceContainer.get<IgnitionStubsManagerService>('IgnitionStubsManagerService');
         this.gatewayManagerService = this.serviceContainer.get<GatewayManagerService>('GatewayManagerService');
         this.configService = this.serviceContainer.get<WorkspaceConfigService>('WorkspaceConfigService');
+        this.environmentService = this.serviceContainer.get<EnvironmentService>('EnvironmentService');
 
         if (!this.pythonASTService) {
             throw new FlintError(
@@ -438,6 +442,22 @@ export class ScriptModuleIndexService implements IServiceLifecycle {
     }
 
     /**
+     * Resolves a gateway's Ignition version through EnvironmentService so a version set only
+     * on the active environment is honoured, falling back to the gateway-level value.
+     */
+    private resolveIgnitionVersion(gateway: GatewayConfig): string | undefined {
+        if (!this.environmentService) {
+            return gateway.ignitionVersion;
+        }
+        try {
+            return this.environmentService.getActiveEnvironmentConfig(gateway).ignitionVersion;
+        } catch {
+            // Gateway not resolvable (e.g. no host configured); fall back to the raw value
+            return gateway.ignitionVersion;
+        }
+    }
+
+    /**
      * Ensures system modules are loaded for the current gateway version
      */
     private async ensureSystemModules(): Promise<void> {
@@ -456,7 +476,8 @@ export class ScriptModuleIndexService implements IServiceLifecycle {
         const gateways = await this.configService.getGateways();
         const gateway = gateways[activeGatewayId];
 
-        let version = gateway?.ignitionVersion;
+        // Resolve so a version declared only on the active environment is picked up too
+        let version = gateway ? this.resolveIgnitionVersion(gateway) : undefined;
 
         // If no version configured, prompt user to select one
         if (!version) {
