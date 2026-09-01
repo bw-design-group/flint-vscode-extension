@@ -89,7 +89,7 @@ export class DeleteResourceCommand extends Command {
             const node = nodeOrProjectId;
             actualProjectId = node.projectId!;
             actualTypeId = node.resourceType ?? (node as any).typeId;
-            actualResourcePath = node.resourcePath!;
+            actualResourcePath = (node as any).originalResourcePath ?? node.resourcePath!;
             actualCategoryId = node.categoryId ?? (node as any).categoryId;
 
             console.log(

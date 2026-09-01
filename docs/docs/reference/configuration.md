@@ -82,19 +82,41 @@ Each entry under `gateways` supports two shapes. The **multi-environment shape i
 
 Either `host` or `environments` must be present.
 
+### How gateway and environment values combine
+
+Gateway-level fields are **defaults**; environment-level fields **override** them. Every field is
+resolved once as `environment value ?? gateway value ?? built-in default`, and every part of the
+extension — the language server connection, Designer matching, and the project scan endpoint —
+reads that single resolved result.
+
+This means you are free to put a field wherever it fits:
+
+- Declare it at gateway level to share it across all environments.
+- Declare it inside an environment to override the shared value there.
+- A gateway with no `environments` at all still resolves every field, including module settings.
+
+An environment may omit any field, including `host`, and inherit the gateway-level value.
+
+:::caution
+Gateway-level values apply to *every* environment that does not override them. That includes
+`ssl` and `modules.project-scan-endpoint.apiTokenFilePath` — a token declared at gateway level
+is sent to each environment, so scope it accordingly, or declare a separate token inside each
+environment that needs one.
+:::
+
 ### Per-environment fields
 
-Each value in `environments` supports:
+Each value in `environments` supports the same fields, all optional:
 
 | Field | Type | Description |
 |---|---|---|
-| `host`* | `string` | Host name or IP for this environment. |
-| `port` | `integer` | Port, 1–65535. |
-| `ssl` | `boolean` | Use HTTPS. |
+| `host` | `string` | Host name or IP for this environment. Falls back to the gateway-level `host`. |
+| `port` | `integer` | Port, 1–65535. Default `8088`. |
+| `ssl` | `boolean` | Use HTTPS. When omitted, derived from the port: `8043` and `443` mean HTTPS, anything else plain HTTP. |
 | `username` | `string` | Username for this environment. |
 | `ignoreSSLErrors` | `boolean` | Skip SSL certificate validation. Default `false`. |
 | `ignitionVersion` | `string` | Ignition version for this environment, if it differs from the gateway-level value. |
-| `modules` | `object` | Environment-specific module configuration. |
+| `modules` | `object` | Environment-specific module configuration, overriding the gateway-level values field by field. |
 
 Switch the active environment from the status bar or with the environment commands — see [Settings](/reference/settings) and [Commands](/reference/commands).
 
@@ -104,11 +126,19 @@ Switch the active environment from the status bar or with the environment comman
 
 Configures the gateway-side project scan integration on Ignition 8.3+ gateways:
 
-| Field | Type | Where | Description |
-|---|---|---|---|
-| `enabled` | `boolean` | gateway level | Whether the project-scan endpoint is available on this gateway. Default `false`. |
-| `apiTokenFilePath` | `string` | environment level | Path to a file containing the Gateway API token (absolute or relative to the workspace root). Keep the token file out of version control. |
-| `forceUpdateDesigner` | `boolean` | environment level | Force open Designers to update when a scan is triggered. Default `false`. |
+| Field | Type | Description |
+|---|---|---|
+| `enabled` | `boolean` | Whether the project-scan endpoint is available on this gateway. Default `false`. |
+| `apiTokenFilePath` | `string` | Path to a file containing the Gateway API token (absolute or relative to the workspace root). Keep the token file out of version control. |
+| `forceUpdateDesigner` | `boolean` | Force open Designers to update when a scan is triggered. Default `false`. |
+
+All three fields may be set at gateway level, at environment level, or both — the environment
+value wins where present. Put `apiTokenFilePath` at gateway level when every environment shares a
+token, or inside each environment when they use different ones.
+
+The language server needs `apiTokenFilePath` to resolve to a value. If it does not, the server
+logs `has no API token configured` to the **Flint Language Server** output channel and stays idle,
+falling back to offline completion.
 
 See [Module installation](/module/installation) and [Security](/module/security) for setting up the token.
 

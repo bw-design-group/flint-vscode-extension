@@ -10,6 +10,7 @@ import { COMMANDS } from '@/core/constants/commands';
 import { FlintError } from '@/core/errors';
 import { CommandContext } from '@/core/types/commands';
 import { WorkspaceConfigService } from '@/services/config/WorkspaceConfigService';
+import { EnvironmentService } from '@/services/environments/EnvironmentService';
 
 /**
  * Command to remove a gateway from the workspace configuration
@@ -23,6 +24,7 @@ export class RemoveGatewayCommand extends Command {
     protected async executeImpl(): Promise<void> {
         try {
             const configService = this.getService<WorkspaceConfigService>('WorkspaceConfigService');
+            const environmentService = this.getService<EnvironmentService>('EnvironmentService');
 
             // Get existing gateways
             const gateways = await configService.getGateways();
@@ -33,16 +35,23 @@ export class RemoveGatewayCommand extends Command {
             }
 
             // Create quick pick items from gateways
-            const gatewayItems = Object.entries(gateways).map(([id, config]) => ({
-                label: id,
-                description:
-                    config.host +
-                    (typeof config.port === 'number' && !isNaN(config.port) && config.port !== 0
-                        ? `:${config.port}`
-                        : ''),
-                detail: `${config.projects && typeof config.projects.length === 'number' && !isNaN(config.projects.length) && config.projects.length > 0 ? config.projects.length : 0} project(s) configured`,
-                gatewayId: id
-            }));
+            const gatewayItems = Object.entries(gateways).map(([id, config]) => {
+                // Resolve so multi-environment gateways show their active endpoint, not "undefined"
+                let description: string;
+                try {
+                    const resolved = environmentService.getActiveEnvironmentConfig(config);
+                    description = `${resolved.host}:${resolved.port}`;
+                } catch {
+                    description = 'No host configured';
+                }
+
+                return {
+                    label: id,
+                    description,
+                    detail: `${config.projects?.length ?? 0} project(s) configured`,
+                    gatewayId: id
+                };
+            });
 
             // Show gateway selection
             const selected = await vscode.window.showQuickPick(gatewayItems, {

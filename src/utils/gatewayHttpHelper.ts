@@ -8,29 +8,27 @@ import * as http from 'http';
 import * as https from 'https';
 import * as path from 'path';
 
-import { GatewayConfig } from '@/core/types/configuration';
 import { ResolvedEnvironmentConfig } from '@/services/environments/EnvironmentService';
 
 /**
  * Requests a project scan on an Ignition Gateway
  * For 8.3+: Hits both Gateway API endpoint and module endpoint
  * For 8.1: Hits only module endpoint
- * @param gatewayConfig Gateway configuration
  * @param projectName Name of the project to scan
- * @param environmentConfig Resolved environment configuration (from EnvironmentService)
+ * @param environmentConfig Resolved environment configuration (from EnvironmentService).
+ *        Gateway-level defaults are already merged in, so the raw gateway config is not needed.
  * @param workspaceRoot Workspace root path for resolving relative token file paths
  * @throws Error if scan request fails
  */
 export async function requestProjectScan(
-    gatewayConfig: GatewayConfig,
     projectName: string,
     environmentConfig: ResolvedEnvironmentConfig,
     workspaceRoot?: string
 ): Promise<void> {
-    const version = environmentConfig.ignitionVersion ?? gatewayConfig.ignitionVersion ?? '8.1.0';
+    const version = environmentConfig.ignitionVersion ?? '8.1.0';
     const is83Plus = compareVersion(version, '8.3.0') >= 0;
 
-    const requestContext = await buildRequestContext(gatewayConfig, environmentConfig, projectName, workspaceRoot);
+    const requestContext = await buildRequestContext(environmentConfig, projectName, workspaceRoot);
     await executeScans(is83Plus, requestContext);
 }
 
@@ -52,14 +50,13 @@ interface ScanRequestContext {
  * Builds the request context for scanning
  */
 async function buildRequestContext(
-    gatewayConfig: GatewayConfig,
     environmentConfig: ResolvedEnvironmentConfig,
     projectName: string,
     workspaceRoot?: string
 ): Promise<ScanRequestContext> {
     const body = JSON.stringify({ projectName });
-    const connectionConfig = buildConnectionConfig(gatewayConfig, environmentConfig);
-    const moduleConfig = getModuleConfig(environmentConfig);
+    const connectionConfig = buildConnectionConfig(environmentConfig);
+    const moduleConfig = environmentConfig.modules['project-scan-endpoint'];
     const headers = await buildHeaders(body, moduleConfig.apiTokenFilePath, workspaceRoot);
 
     return {
@@ -72,36 +69,17 @@ async function buildRequestContext(
 }
 
 /**
- * Builds connection configuration
+ * Builds connection configuration.
+ * Every value is already merged and defaulted by EnvironmentService.
  */
 function buildConnectionConfig(
-    gatewayConfig: GatewayConfig,
     environmentConfig: ResolvedEnvironmentConfig
 ): Pick<ScanRequestContext, 'protocol' | 'host' | 'port' | 'ignoreSSLErrors'> {
-    const protocol = (environmentConfig.ssl ?? true) ? 'https' : 'http';
     return {
-        protocol: protocol === 'https' ? https : http,
+        protocol: environmentConfig.ssl ? https : http,
         host: environmentConfig.host,
-        port: environmentConfig.port ?? (protocol === 'https' ? 8043 : 8088),
-        ignoreSSLErrors: environmentConfig.ignoreSSLErrors ?? gatewayConfig.ignoreSSLErrors ?? false
-    };
-}
-
-/**
- * Gets project scan module configuration from environment config
- * Note: 'project-scan-endpoint' is defined in the type system (ResolvedModules)
- * To add new modules, update modules.ts types and add similar helper functions
- */
-function getModuleConfig(environmentConfig: ResolvedEnvironmentConfig): {
-    enabled: boolean;
-    apiTokenFilePath: string | undefined;
-    forceUpdateDesigner: boolean;
-} {
-    const module = environmentConfig.modules?.['project-scan-endpoint'];
-    return {
-        enabled: module?.enabled ?? false,
-        apiTokenFilePath: module?.apiTokenFilePath,
-        forceUpdateDesigner: module?.forceUpdateDesigner ?? false
+        port: environmentConfig.port,
+        ignoreSSLErrors: environmentConfig.ignoreSSLErrors
     };
 }
 

@@ -2,7 +2,8 @@
 
 A powerful VS Code extension for working with Ignition SCADA/HMI projects, providing a comprehensive project browser, resource management, and development tools.
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue)
+[![Version](https://img.shields.io/github/v/release/bw-design-group/flint-vscode-extension?label=version)](https://marketplace.visualstudio.com/items?itemName=Keith-gamble.ignition-flint)
+[![Open VSX](https://img.shields.io/open-vsx/v/keith-gamble/ignition-flint?label=open%20vsx)](https://open-vsx.org/extension/keith-gamble/ignition-flint)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-^1.102.0-blue.svg)
 

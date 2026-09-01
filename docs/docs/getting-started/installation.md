@@ -29,6 +29,10 @@ code --install-extension Keith-gamble.ignition-flint
 
 <!-- SCREENSHOT: VS Code Extensions view showing "Flint for Ignition" search result with the Install button -->
 
+### From Open VSX (VSCodium, Cursor, and other editors)
+
+The extension is also published to the [Open VSX Registry](https://open-vsx.org/extension/keith-gamble/ignition-flint) as `keith-gamble.ignition-flint`, for editors that use Open VSX instead of the VS Code Marketplace.
+
 ### From a .vsix file
 
 Every release also attaches a `.vsix` package to its [GitHub release](https://github.com/bw-design-group/flint-vscode-extension/releases). To install it, open the Extensions view, click the **...** menu, choose **Install from VSIX...**, and select the downloaded file.

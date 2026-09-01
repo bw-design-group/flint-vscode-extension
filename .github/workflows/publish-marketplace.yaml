@@ -1,4 +1,4 @@
-name: Publish to VS Code Marketplace
+name: Publish to VS Code Marketplace and Open VSX
 
 on:
   push:
@@ -72,6 +72,11 @@ jobs:
         run: npx vsce publish --packagePath *.vsix ${{ steps.set_version.outputs.prerelease_flag }}
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX
+        run: npx ovsx publish --packagePath *.vsix ${{ steps.set_version.outputs.prerelease_flag }}
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
 
       - name: Create GitHub Release
         if: github.event_name == 'push'

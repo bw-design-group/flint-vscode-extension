@@ -120,14 +120,14 @@ export class GatewayScanService implements IServiceLifecycle {
         }
 
         const environmentConfig = this.environmentService!.getActiveEnvironmentConfig(gatewayConfig);
-        if (!this.shouldScan(gatewayId, gatewayConfig, environmentConfig)) {
+        if (!this.shouldScan(gatewayId, environmentConfig)) {
             return;
         }
 
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         console.log(`Triggering project scan for '${projectId}' on gateway '${gatewayId}'...`);
 
-        await requestProjectScan(gatewayConfig, projectId, environmentConfig, workspaceRoot);
+        await requestProjectScan(projectId, environmentConfig, workspaceRoot);
 
         void vscode.window.showInformationMessage(`Project scan triggered requested for '${gatewayId}'.`);
         console.log(`Project scan requested for '${gatewayId}'`);
@@ -151,14 +151,10 @@ export class GatewayScanService implements IServiceLifecycle {
     /**
      * Determines if scan should proceed based on version and module availability
      */
-    private shouldScan(
-        gatewayId: string,
-        gatewayConfig: GatewayConfig,
-        environmentConfig: ResolvedEnvironmentConfig
-    ): boolean {
-        const version = environmentConfig.ignitionVersion ?? gatewayConfig.ignitionVersion ?? '8.1.0';
+    private shouldScan(gatewayId: string, environmentConfig: ResolvedEnvironmentConfig): boolean {
+        const version = environmentConfig.ignitionVersion ?? '8.1.0';
         const is83Plus = this.compareVersion(version, '8.3.0') >= 0;
-        const moduleEnabled = environmentConfig.modules?.['project-scan-endpoint']?.enabled ?? false;
+        const moduleEnabled = environmentConfig.modules['project-scan-endpoint'].enabled;
 
         if (!is83Plus && !moduleEnabled) {
             console.log(

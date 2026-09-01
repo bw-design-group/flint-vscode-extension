@@ -76,7 +76,7 @@ Check, in order:
 
 1. **Is a gateway selected?** The language server is dormant until you pick a gateway (status bar, or **Flint: Select Gateway**).
 2. **Is `flint.languageServer.enabled` on?** It defaults to `true`. When it is `false`, Flint falls back to the legacy completion engine, which provides completion only — no hover, definition, or diagnostics.
-3. **Is an API token configured and valid?** The gateway entry in `flint.config.json` needs `modules.project-scan-endpoint.apiTokenFilePath` pointing at a token file. On 8.3 this can be a native gateway API token; on 8.1 it is the Flint-managed bearer token. See [Module Security](/module/security).
+3. **Is an API token configured and valid?** The gateway entry in `flint.config.json` needs `modules.project-scan-endpoint.apiTokenFilePath` pointing at a token file — either at gateway level or inside the active environment; the environment value wins where both are set. On 8.3 this can be a native gateway API token; on 8.1 it is the Flint-managed bearer token. See [Module Security](/module/security).
 4. **Is the gateway endpoint reachable, and is the module new enough?** Open `http://<gateway>:<port>/data/flint/health` in a browser — it is intentionally unauthenticated. If it does not respond, the module is not installed or the gateway is unreachable. If it responds but `capabilities` does not include `lsp.websocket`, the module predates v1.2.0 — upgrade it.
 5. **Check the logs.** The Output panel → **Flint Language Server** channel shows the WebSocket URL it targets, connection state, and authentication failures. The connection restarts automatically when you change gateways or config.
 

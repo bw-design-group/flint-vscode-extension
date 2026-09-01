@@ -5,54 +5,40 @@
  */
 
 /**
- * Project scan endpoint module configuration (gateway-level)
- * Defines whether the module is installed/available on the gateway
+ * Project scan endpoint module configuration
+ *
+ * The same shape is accepted at gateway level and at environment level: gateway-level
+ * values act as defaults and environment-level values override them. Every field is
+ * optional at both levels so a legacy (environment-less) gateway can declare all of them.
  */
-export interface ProjectScanModuleGatewayConfig {
+export interface ProjectScanModuleConfig {
     /** Whether the project-scan-endpoint module is installed on this gateway */
     readonly enabled?: boolean;
-}
-
-/**
- * Project scan endpoint module configuration (environment-specific)
- * Defines behavior settings for the module in a specific environment
- */
-export interface ProjectScanModuleEnvironmentConfig {
-    /** Whether to force update designers when scanning (module endpoint only) */
-    readonly forceUpdateDesigner?: boolean;
     /** Path to API token file for 8.3+ Gateway API authentication */
     readonly apiTokenFilePath?: string;
+    /** Whether to force update designers when scanning (module endpoint only) */
+    readonly forceUpdateDesigner?: boolean;
 }
 
 /**
- * Module configurations at gateway level
- * Defines which modules are installed/available on the gateway
+ * Module configurations, valid at both gateway and environment level
  */
 export interface GatewayModules {
     /** Project scan endpoint module configuration */
-    readonly 'project-scan-endpoint'?: ProjectScanModuleGatewayConfig;
-}
-
-/**
- * Module configurations at environment level
- * Defines behavior settings for modules in a specific environment
- */
-export interface GatewayEnvironmentModules {
-    /** Project scan endpoint module configuration */
-    readonly 'project-scan-endpoint'?: ProjectScanModuleEnvironmentConfig;
+    readonly 'project-scan-endpoint'?: ProjectScanModuleConfig;
 }
 
 /**
  * Resolved project scan module configuration
- * Merges gateway-level (enabled) and environment-level (behavior) settings
+ * Every field comes from the same merge: environment value ?? gateway value ?? default
  */
 export interface ResolvedProjectScanModuleConfig {
-    /** Whether the module is enabled (from gateway config) */
-    enabled?: boolean;
-    /** Path to API token file (from environment config) */
-    apiTokenFilePath?: string;
-    /** Whether to force update designers (from environment config) */
-    forceUpdateDesigner?: boolean;
+    /** Whether the module is enabled */
+    readonly enabled: boolean;
+    /** Path to API token file, if configured at either level */
+    readonly apiTokenFilePath?: string;
+    /** Whether to force update designers */
+    readonly forceUpdateDesigner: boolean;
 }
 
 /**
@@ -60,5 +46,5 @@ export interface ResolvedProjectScanModuleConfig {
  * Merged configuration from gateway and environment levels
  */
 export interface ResolvedModules {
-    'project-scan-endpoint'?: ResolvedProjectScanModuleConfig;
+    readonly 'project-scan-endpoint': ResolvedProjectScanModuleConfig;
 }

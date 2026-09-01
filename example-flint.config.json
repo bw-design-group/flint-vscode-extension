@@ -48,7 +48,12 @@
                 "prod": {
                     "host": "backend.example.com",
                     "port": 443,
-                    "ssl": true
+                    "ssl": true,
+                    "modules": {
+                        "project-scan-endpoint": {
+                            "apiTokenFilePath": "~/.ignition/tokens/backend-prod-api-token"
+                        }
+                    }
                 }
             },
             "defaultEnvironment": "local",

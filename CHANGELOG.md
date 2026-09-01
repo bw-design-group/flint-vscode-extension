@@ -5,6 +5,64 @@ All notable changes to the Flint for Ignition extension will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.3.0] - 2026-09-01
+
+### Added
+- The extension is now published to the [Open VSX Registry](https://open-vsx.org/extension/keith-gamble/ignition-flint)
+  (`keith-gamble.ignition-flint`) alongside the VS Code Marketplace, so
+  VSCodium, Cursor, and other Open VSX-based editors can install it directly.
+- Source control decorations (git colors and badges) in the Project Browser: resource
+  tree items now resolve their real filesystem locations, so modified and untracked
+  resources are highlighted just like in the Explorer.
+- New `flint.useNativeFileIcons` setting (default off) to render Project Browser
+  resources with your file icon theme (e.g. Material Icons) instead of Flint's
+  built-in icons. Contributed by @nburnet1.
+
+### Changed
+- The Designer status bar tooltip names the environment that matched, not just the gateway id,
+  since a Designer may be connected to an environment other than the one selected in the editor.
+- Gateway mismatch messages identify the config side as `Config <gateway>/<environment>` instead
+  of `Config`.
+
+### Fixed
+- Gateway configuration is now resolved once into a single object that every consumer reads
+  from, so gateway-level and environment-level settings no longer disagree. Contributed by @jasperlg.
+  - `modules['project-scan-endpoint'].apiTokenFilePath` is now readable on a gateway that has no
+    `environments` block. Previously it resolved to `undefined` no matter where it was declared,
+    which silently idled the language server and fell back to offline completion.
+  - Designer matching now uses resolved configuration, so a gateway that declares its host inside
+    `environments` is matched instead of being rejected with "has no host configured". A Designer
+    is matched against every configured environment, not just the selected one, and the match
+    result reports which environment it matched.
+  - `enabled`, `apiTokenFilePath`, and `forceUpdateDesigner` may each be declared at gateway level,
+    at environment level, or both; the environment value wins. Configurations that duplicated
+    connection details across both levels to work around this keep working unchanged.
+- Environment entries may omit any field, including `host`, and inherit the gateway-level value.
+  Gateway validation previously rejected such a config outright (`Environment 'x': host is
+  required`), so the extension failed to load it. Gateway validation had drifted into two
+  parallel implementations; they are now one, so the loader and `validateGateway()` can no
+  longer disagree.
+- Gateway quick picks show the resolved host and port for multi-environment gateways instead of
+  `undefined`, and mismatch messages no longer report `undefined` ports.
+- The Ignition version used for stub downloads now honours a version set on an environment
+  rather than only at gateway level, in both the automatic stub load and the manual
+  **Download Ignition Stubs** picker.
+- A gateway that does not declare `ssl` now derives it from its port — 8043 and 443 resolve to
+  HTTPS, anything else to plain HTTP — instead of always defaulting to HTTPS. The common
+  `{"host": "localhost", "port": 8088}` gateway previously resolved to an `https://` URL that no
+  Ignition gateway answers, so the language server and the project scan both failed on it while
+  Designer matching used a different default again and reported an SSL mismatch. Matching and
+  connecting now agree by construction. Declare `ssl` explicitly to override the derived value.
+- A malformed optional gateway property (`ssl`, `username`, `ignoreSSLErrors`, `enabled`, or
+  `projects` with the wrong type) is now a warning rather than an error. These are type-only
+  problems that fall back to the property's default, and an error aborts the entire
+  configuration load — collapsing the two gateway validators onto one implementation would
+  otherwise have started rejecting configurations that have always loaded.
+- Corrected the Kindling link in the README to point at the official
+  `inductiveautomation/kindling` repository. Contributed by @Danielv123.
+
 ## [1.2.0] - 2026-07-10
 
 ### Added

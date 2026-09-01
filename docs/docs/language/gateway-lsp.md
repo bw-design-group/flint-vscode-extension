@@ -43,6 +43,10 @@ Because the endpoint speaks standard LSP, any LSP-capable editor can use it — 
 }
 ```
 
+   `apiTokenFilePath` may sit at gateway level as shown above, or inside a specific entry under
+   `environments` when each environment uses a different token. The environment value wins where
+   both are present. See [Configuration](/reference/configuration).
+
 3. Select the gateway in the Flint status bar. The extension checks the gateway's Flint health endpoint and connects automatically.
 
 If the gateway's module is older than v1.2.0, the language server stays off and Flint shows a one-time notice asking you to upgrade the module.

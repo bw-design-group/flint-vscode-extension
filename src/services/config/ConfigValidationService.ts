@@ -119,31 +119,41 @@ export class ConfigValidationService implements IServiceLifecycle {
      * Validates a single gateway configuration
      */
     validateGateway(gatewayId: string, gateway: GatewayConfig): Promise<GatewayValidationResult> {
+        return Promise.resolve(this.validateGatewayConfig(gatewayId, gateway));
+    }
+
+    /**
+     * The single gateway validation implementation.
+     *
+     * Both the public async {@link validateGateway} and the whole-config path used when
+     * loading `flint.config.json` go through here. They used to be two parallel
+     * implementations, which silently drifted: only the (unreachable) async one learned
+     * that an environment may inherit the gateway-level host.
+     */
+    private validateGatewayConfig(gatewayId: string, gateway: unknown): GatewayValidationResult {
         const errors: string[] = [];
         const warnings: string[] = [];
 
-        // Basic validation
         this.validateGatewayBasics(gatewayId, gateway, errors);
-        if (errors.length > 0 && (!gateway || typeof gateway !== 'object')) {
-            return Promise.resolve({ isValid: false, errors, warnings });
+        if (!gateway || typeof gateway !== 'object') {
+            return { isValid: false, errors, warnings };
         }
 
-        // Format validation
-        this.validateGatewayFormat(gateway, errors, warnings);
-        // Validate specific configurations
-        this.validateLegacyConfig(gateway, errors);
-        this.validateEnvironmentConfig(gateway, errors);
-        this.validateGatewayProperties(gateway, errors);
-        this.addConfigurationWarnings(gateway, warnings);
+        const config = gateway as GatewayConfig;
+        this.validateGatewayFormat(config, errors, warnings);
+        this.validateLegacyConfig(config, errors, warnings);
+        this.validateEnvironmentConfig(config, errors, warnings);
+        this.validateGatewayProperties(config, warnings);
+        this.addConfigurationWarnings(config, warnings);
 
-        return Promise.resolve({
+        return {
             isValid: errors.length === 0,
             errors: Object.freeze(errors),
             warnings: Object.freeze(warnings)
-        });
+        };
     }
 
-    private validateGatewayBasics(gatewayId: string, gateway: GatewayConfig, errors: string[]): void {
+    private validateGatewayBasics(gatewayId: string, gateway: unknown, errors: string[]): void {
         if (!gatewayId || typeof gatewayId !== 'string') {
             errors.push('Gateway ID must be a non-empty string');
         }
@@ -164,13 +174,14 @@ export class ConfigValidationService implements IServiceLifecycle {
             );
         } else if (hasLegacyConfig && hasEnvironmentConfig) {
             warnings.push(
-                'Gateway has both legacy (host) and multi-environment (environments) configuration. ' +
-                    'Multi-environment format will take precedence.'
+                'Gateway declares both a top-level host and an environments block. Gateway-level ' +
+                    'values are defaults that every environment inherits unless it overrides them; ' +
+                    'remove any that are left over from a single-environment configuration.'
             );
         }
     }
 
-    private validateLegacyConfig(gateway: GatewayConfig, errors: string[]): void {
+    private validateLegacyConfig(gateway: GatewayConfig, errors: string[], warnings: string[]): void {
         if (!gateway.host) {
             return;
         }
@@ -180,13 +191,15 @@ export class ConfigValidationService implements IServiceLifecycle {
         }
 
         this.validatePortNumber(gateway.port, 'Gateway', errors);
-        this.validateBooleanProperty(gateway.ssl, 'Gateway SSL setting', errors);
+        // Type-only; a wrong type falls back to the default rather than blocking the load
+        this.validateBooleanProperty(gateway.ssl, 'Gateway SSL setting', warnings);
     }
 
-    private validateEnvironmentConfig(gateway: GatewayConfig, errors: string[]): void {
+    private validateEnvironmentConfig(gateway: GatewayConfig, errors: string[], warnings: string[]): void {
         if (!gateway.environments) {
             return;
         }
+        const hasGatewayHost = typeof gateway.host === 'string' && gateway.host.length > 0;
 
         if (typeof gateway.environments !== 'object' || gateway.environments === null) {
             errors.push('Gateway environments must be an object');
@@ -201,13 +214,19 @@ export class ConfigValidationService implements IServiceLifecycle {
 
         // Validate each environment
         for (const [envName, envConfig] of Object.entries(gateway.environments)) {
-            this.validateSingleEnvironment(envName, envConfig, errors);
+            this.validateSingleEnvironment(envName, envConfig, hasGatewayHost, errors, warnings);
         }
 
         this.validateDefaultEnvironment(gateway, errors);
     }
 
-    private validateSingleEnvironment(envName: string, envConfig: unknown, errors: string[]): void {
+    private validateSingleEnvironment(
+        envName: string,
+        envConfig: unknown,
+        hasGatewayHost: boolean,
+        errors: string[],
+        warnings: string[]
+    ): void {
         if (!envName || typeof envName !== 'string') {
             errors.push('Environment name must be a non-empty string');
             return;
@@ -220,14 +239,18 @@ export class ConfigValidationService implements IServiceLifecycle {
 
         const env = envConfig as Record<string, unknown>;
 
-        if (!env.host || typeof env.host !== 'string') {
-            errors.push(`Environment '${envName}': host is required and must be a string`);
+        // An environment may omit host and inherit the gateway-level one
+        if (env.host !== undefined && typeof env.host !== 'string') {
+            errors.push(`Environment '${envName}': host must be a string`);
+        } else if (env.host === undefined && !hasGatewayHost) {
+            errors.push(`Environment '${envName}': host is required when the gateway does not define a top-level host`);
         }
 
         this.validatePortNumber(env.port, `Environment '${envName}':`, errors);
-        this.validateBooleanProperty(env.ssl, `Environment '${envName}': SSL setting`, errors);
-        this.validateStringProperty(env.username, `Environment '${envName}': username`, errors);
-        this.validateBooleanProperty(env.ignoreSSLErrors, `Environment '${envName}': ignoreSSLErrors`, errors);
+        // Type-only; a wrong type falls back to the default rather than blocking the load
+        this.validateBooleanProperty(env.ssl, `Environment '${envName}': SSL setting`, warnings);
+        this.validateStringProperty(env.username, `Environment '${envName}': username`, warnings);
+        this.validateBooleanProperty(env.ignoreSSLErrors, `Environment '${envName}': ignoreSSLErrors`, warnings);
     }
 
     private validateDefaultEnvironment(gateway: GatewayConfig, errors: string[]): void {
@@ -242,11 +265,19 @@ export class ConfigValidationService implements IServiceLifecycle {
         }
     }
 
-    private validateGatewayProperties(gateway: GatewayConfig, errors: string[]): void {
-        this.validateStringProperty(gateway.username, 'Gateway username', errors);
-        this.validateBooleanProperty(gateway.ignoreSSLErrors, 'Gateway ignoreSSLErrors setting', errors);
-        this.validateProjectsArray(gateway.projects, errors);
-        this.validateBooleanProperty(gateway.enabled, 'Gateway enabled setting', errors);
+    /**
+     * Type checks for optional gateway properties.
+     *
+     * These are warnings, not errors: a wrong type here falls back to the property's default,
+     * and `WorkspaceConfigService` aborts the whole config load on any error. Before gateway
+     * validation was collapsed into one implementation these never ran on the load path, so
+     * promoting them to errors would reject configurations that have always loaded.
+     */
+    private validateGatewayProperties(gateway: GatewayConfig, warnings: string[]): void {
+        this.validateStringProperty(gateway.username, 'Gateway username', warnings);
+        this.validateBooleanProperty(gateway.ignoreSSLErrors, 'Gateway ignoreSSLErrors setting', warnings);
+        this.validateProjectsArray(gateway.projects, warnings);
+        this.validateBooleanProperty(gateway.enabled, 'Gateway enabled setting', warnings);
     }
 
     private validatePortNumber(port: unknown, context: string, errors: string[]): void {
@@ -523,8 +554,8 @@ export class ConfigValidationService implements IServiceLifecycle {
         }
 
         for (const [gatewayId, gatewayConfig] of Object.entries(gateways)) {
-            // Note: We can't await here, so we do synchronous validation
-            const gatewayErrors = this.validateGatewaySynchronously(gatewayId, gatewayConfig);
+            // Validation is synchronous throughout; validateGateway() only wraps this in a Promise
+            const gatewayErrors = this.validateGatewayConfig(gatewayId, gatewayConfig);
             gatewayErrors.errors.forEach(error => {
                 errors.push(`Gateway '${gatewayId}': ${error}`);
             });
@@ -538,127 +569,6 @@ export class ConfigValidationService implements IServiceLifecycle {
             errors: errors as readonly string[],
             warnings: warnings as readonly string[]
         };
-    }
-
-    /**
-     * Validates gateway configuration synchronously (for use in main validation)
-     */
-    private validateGatewaySynchronously(gatewayId: string, gateway: unknown): ConfigValidationResult {
-        const errors: string[] = [];
-        const warnings: string[] = [];
-
-        if (!gateway || typeof gateway !== 'object') {
-            errors.push('Gateway configuration must be an object');
-            return { isValid: false, errors, warnings };
-        }
-
-        const gatewayObj = gateway as Record<string, unknown>;
-
-        this.validateGatewayFormatSync(gatewayObj, errors, warnings);
-        this.validateLegacyConfigSync(gatewayObj, errors);
-        this.validateEnvironmentConfigSync(gatewayObj, errors);
-
-        return { isValid: errors.length === 0, errors, warnings };
-    }
-
-    private validateGatewayFormatSync(gatewayObj: Record<string, unknown>, errors: string[], warnings: string[]): void {
-        const hasLegacyConfig = Boolean(gatewayObj.host);
-        const hasEnvironmentConfig = Boolean(gatewayObj.environments);
-
-        if (!hasLegacyConfig && !hasEnvironmentConfig) {
-            errors.push(
-                'Gateway must have either a host property (legacy format) or ' +
-                    'environments property (multi-environment format)'
-            );
-        } else if (hasLegacyConfig && hasEnvironmentConfig) {
-            warnings.push(
-                'Gateway has both legacy (host) and multi-environment (environments) configuration. ' +
-                    'Multi-environment format will take precedence.'
-            );
-        }
-    }
-
-    private validateLegacyConfigSync(gatewayObj: Record<string, unknown>, errors: string[]): void {
-        if (!gatewayObj.host) {
-            return;
-        }
-
-        if (typeof gatewayObj.host !== 'string') {
-            errors.push('Gateway host must be a string');
-        }
-
-        if (gatewayObj.port !== undefined && gatewayObj.port !== null) {
-            const port = gatewayObj.port as number;
-            if (!Number.isInteger(gatewayObj.port) || port < 1 || port > 65535) {
-                errors.push('Gateway port must be an integer between 1 and 65535');
-            }
-        }
-    }
-
-    private validateEnvironmentConfigSync(gatewayObj: Record<string, unknown>, errors: string[]): void {
-        if (!gatewayObj.environments) {
-            return;
-        }
-
-        if (typeof gatewayObj.environments !== 'object' || gatewayObj.environments === null) {
-            errors.push('Gateway environments must be an object');
-            return;
-        }
-
-        const environments = gatewayObj.environments as Record<string, unknown>;
-        const envNames = Object.keys(environments);
-
-        if (envNames.length === 0) {
-            errors.push('Gateway environments object cannot be empty');
-            return;
-        }
-
-        for (const [envName, envConfig] of Object.entries(environments)) {
-            this.validateSingleEnvironmentSync(envName, envConfig, errors);
-        }
-
-        this.validateDefaultEnvironmentSync(gatewayObj, environments, errors);
-    }
-
-    private validateSingleEnvironmentSync(envName: string, envConfig: unknown, errors: string[]): void {
-        if (!envName || typeof envName !== 'string') {
-            errors.push('Environment name must be a non-empty string');
-            return;
-        }
-
-        if (!envConfig || typeof envConfig !== 'object') {
-            errors.push(`Environment '${envName}' configuration must be an object`);
-            return;
-        }
-
-        const env = envConfig as Record<string, unknown>;
-
-        if (!env.host || typeof env.host !== 'string') {
-            errors.push(`Environment '${envName}': host is required and must be a string`);
-        }
-
-        if (env.port !== undefined && env.port !== null) {
-            const port = env.port as number;
-            if (!Number.isInteger(env.port) || port < 1 || port > 65535) {
-                errors.push(`Environment '${envName}': port must be an integer between 1 and 65535`);
-            }
-        }
-    }
-
-    private validateDefaultEnvironmentSync(
-        gatewayObj: Record<string, unknown>,
-        environments: Record<string, unknown>,
-        errors: string[]
-    ): void {
-        if (gatewayObj.defaultEnvironment === undefined) {
-            return;
-        }
-
-        if (typeof gatewayObj.defaultEnvironment !== 'string') {
-            errors.push('Gateway defaultEnvironment must be a string');
-        } else if (!environments[gatewayObj.defaultEnvironment]) {
-            errors.push(`Gateway defaultEnvironment '${gatewayObj.defaultEnvironment}' does not exist in environments`);
-        }
     }
 
     /**

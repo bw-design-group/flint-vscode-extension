@@ -1172,7 +1172,7 @@
         "@typescript-eslint/eslint-plugin": "^8.39.1",
         "@typescript-eslint/parser": "^8.39.1",
         "@vscode/test-cli": "^0.0.12",
-        "@vscode/test-electron": "^2.5.2",
+        "@vscode/test-electron": "^3.1.0",
         "esbuild": ">=0.25.0",
         "eslint": "^9.33.0",
         "eslint-plugin-import": "^2.32.0",

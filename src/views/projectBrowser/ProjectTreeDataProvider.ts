@@ -4,6 +4,7 @@
  * Provides tree view functionality with service-based architecture
  */
 
+import * as fs from 'fs';
 import * as path from 'path';
 
 import * as vscode from 'vscode';
@@ -149,7 +150,17 @@ export class ProjectTreeDataProvider implements vscode.TreeDataProvider<TreeNode
             item.contextValue = element.contextValue;
 
             // Apply decorations using decoration provider
-            const treeItem = {
+            const treeItem: {
+                label: string;
+                id?: string;
+                iconPath?: vscode.ThemeIcon;
+                description?: string;
+                tooltip?: string;
+                collapsibleState?: vscode.TreeItemCollapsibleState;
+                contextValue?: string;
+                command?: vscode.Command;
+                resourceUri?: vscode.Uri;
+            } = {
                 label: item.label as string,
                 id: item.id,
                 iconPath: undefined,
@@ -162,9 +173,23 @@ export class ProjectTreeDataProvider implements vscode.TreeDataProvider<TreeNode
 
             this.decorationProvider.applyDecorations(treeItem, element);
 
+            const resourceUri = this.resolveResourceUri(element);
+            if (resourceUri) {
+                treeItem.resourceUri = resourceUri;
+            }
+
+            const useNativeFileIcons =
+                vscode.workspace.getConfiguration('flint').get<boolean>('useNativeFileIcons') ?? false;
+            if (useNativeFileIcons && resourceUri && this.shouldUseDefaultResourceIcon(treeItem.iconPath)) {
+                treeItem.iconPath = this.getDefaultResourceIcon(element, resourceUri);
+            }
+
             // Copy back to VS Code tree item
             if (treeItem.iconPath) {
                 (item as any).iconPath = treeItem.iconPath;
+            }
+            if (treeItem.resourceUri) {
+                item.resourceUri = treeItem.resourceUri;
             }
             item.contextValue = treeItem.contextValue;
             item.tooltip = treeItem.tooltip;
@@ -784,6 +809,171 @@ export class ProjectTreeDataProvider implements vscode.TreeDataProvider<TreeNode
 
         const projectPath = project?.projectPath;
         return typeof projectPath === 'string' ? projectPath : null;
+    }
+
+    /**
+     * Resolves a resource URI for tree items so VS Code can apply default icon themes and SCM decorations.
+     */
+    private resolveResourceUri(element: TreeNode): vscode.Uri | undefined {
+        if (!this.isResourceNodeWithPath(element)) {
+            return undefined;
+        }
+
+        const typeId = element.typeId || element.resourceType;
+        if (!typeId) {
+            return undefined;
+        }
+
+        const projectPath = this.resolveProjectPathForNode(element);
+        if (!projectPath) {
+            return undefined;
+        }
+
+        const { resourceDirectory, primaryFile } = this.getResourceProviderPaths(typeId);
+        const relativePath = this.stripResourceDirectoryPrefix(element.resourcePath, resourceDirectory);
+        const resourceDirectoryPath = path.join(projectPath, resourceDirectory, relativePath);
+
+        if (element.type === TreeNodeType.RESOURCE_FOLDER) {
+            return this.resolveFolderResourceUri(resourceDirectoryPath);
+        }
+
+        if (typeof primaryFile === 'string' && primaryFile.length > 0) {
+            const primaryFilePath = path.join(resourceDirectoryPath, primaryFile);
+            if (this.pathExists(primaryFilePath)) {
+                return vscode.Uri.file(primaryFilePath);
+            }
+        }
+
+        return vscode.Uri.file(resourceDirectoryPath);
+    }
+
+    /**
+     * Checks whether a node maps to a filesystem-backed resource location.
+     */
+    private isResourceNodeWithPath(
+        element: TreeNode
+    ): element is TreeNode & { resourcePath: string; projectId: string } {
+        return Boolean(
+            element.resourcePath &&
+                element.projectId &&
+                (element.type === TreeNodeType.RESOURCE_ITEM ||
+                    element.type === TreeNodeType.SINGLETON_RESOURCE ||
+                    element.type === TreeNodeType.RESOURCE_FOLDER)
+        );
+    }
+
+    /**
+     * Resolves project path for local or inherited resource nodes.
+     */
+    private resolveProjectPathForNode(element: TreeNode & { projectId: string }): string | null {
+        const elementWithSource = element as TreeNode & { sourceProject?: string };
+        const sourceProject =
+            typeof elementWithSource.sourceProject === 'string' ? elementWithSource.sourceProject : element.projectId;
+        return this.findProjectPath(sourceProject) || this.findProjectPath(element.projectId);
+    }
+
+    /**
+     * Gets provider-specific resource directory and primary file.
+     */
+    private getResourceProviderPaths(typeId: string): { resourceDirectory: string; primaryFile?: string } {
+        const resourceTypeRegistry = this.serviceContainer.get<any>('ResourceTypeProviderRegistry');
+        const provider = resourceTypeRegistry?.getProvider?.(typeId);
+        const searchConfig = provider?.getSearchConfig?.();
+        const editorConfig = provider?.getEditorConfig?.();
+
+        const resourceDirectory = Array.isArray(searchConfig?.directoryPaths) ? searchConfig.directoryPaths[0] : '';
+        const primaryFile =
+            typeof editorConfig?.primaryFile === 'string' && editorConfig.primaryFile.length > 0
+                ? editorConfig.primaryFile
+                : undefined;
+
+        return { resourceDirectory, primaryFile };
+    }
+
+    /**
+     * Resolves folder URI, preferring code.py when present.
+     */
+    private resolveFolderResourceUri(resourceDirectoryPath: string): vscode.Uri {
+        const codePyPath = path.join(resourceDirectoryPath, 'code.py');
+        if (this.pathExists(codePyPath)) {
+            return vscode.Uri.file(codePyPath);
+        }
+
+        return vscode.Uri.file(resourceDirectoryPath);
+    }
+
+    /**
+     * Removes provider directory prefix from a resource path when needed.
+     */
+    private stripResourceDirectoryPrefix(resourcePath: string, resourceDirectory: string): string {
+        if (!resourceDirectory) {
+            return resourcePath;
+        }
+
+        const normalizedResourcePath = resourcePath.replace(/\\/g, '/');
+        const normalizedResourceDirectory = resourceDirectory.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+
+        if (normalizedResourcePath === normalizedResourceDirectory) {
+            return '';
+        }
+
+        if (normalizedResourcePath.startsWith(`${normalizedResourceDirectory}/`)) {
+            return normalizedResourcePath.substring(normalizedResourceDirectory.length + 1);
+        }
+
+        return resourcePath;
+    }
+
+    /**
+     * Determines whether icon should use VS Code's default file/folder theme icon.
+     */
+    private shouldUseDefaultResourceIcon(iconPath: unknown): boolean {
+        if (!(iconPath instanceof vscode.ThemeIcon)) {
+            return true;
+        }
+
+        return iconPath.id !== 'warning' && iconPath.id !== 'error';
+    }
+
+    /**
+     * Chooses default file/folder icon using resource URI context.
+     */
+    private getDefaultResourceIcon(element: TreeNode, resourceUri: vscode.Uri): vscode.ThemeIcon {
+        if (resourceUri.fsPath.endsWith(`${path.sep}code.py`)) {
+            return vscode.ThemeIcon.File;
+        }
+
+        if (this.isDirectoryPath(resourceUri.fsPath)) {
+            return vscode.ThemeIcon.Folder;
+        }
+
+        if (element.type === TreeNodeType.RESOURCE_FOLDER) {
+            return vscode.ThemeIcon.Folder;
+        }
+
+        return vscode.ThemeIcon.File;
+    }
+
+    /**
+     * Safe path existence check.
+     */
+    private pathExists(targetPath: string): boolean {
+        try {
+            return fs.existsSync(targetPath);
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Safe directory check for URI path icon selection.
+     */
+    private isDirectoryPath(targetPath: string): boolean {
+        try {
+            return fs.statSync(targetPath).isDirectory();
+        } catch {
+            return false;
+        }
     }
 
     /**

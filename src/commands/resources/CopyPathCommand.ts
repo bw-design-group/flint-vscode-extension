@@ -11,6 +11,7 @@ import { Command } from '@/commands/base/Command';
 import { COMMANDS } from '@/core/constants/commands';
 import { FlintError, InvalidArgumentError } from '@/core/errors';
 import { CommandContext, CommandValidationResult } from '@/core/types/commands';
+import { TreeNode } from '@/core/types/tree';
 
 /**
  * Command to copy a resource path to the clipboard
@@ -21,8 +22,10 @@ export class CopyPathCommand extends Command {
         super(COMMANDS.COPY_RESOURCE_PATH, context);
     }
 
-    protected validateArguments(resourcePath?: string, _pathType?: string): CommandValidationResult {
+    protected validateArguments(resourcePathOrNode?: string | TreeNode, _pathType?: string): CommandValidationResult {
         const errors: string[] = [];
+
+        const resourcePath = this.extractResourcePath(resourcePathOrNode);
 
         if (resourcePath === undefined || resourcePath === '') {
             errors.push('Resource path is required');
@@ -35,9 +38,11 @@ export class CopyPathCommand extends Command {
         };
     }
 
-    protected async executeImpl(resourcePath?: string, pathType: string = 'resource'): Promise<void> {
+    protected async executeImpl(resourcePathOrNode?: string | TreeNode, pathType: string = 'resource'): Promise<void> {
+        const resourcePath = this.extractResourcePath(resourcePathOrNode);
+
         if (resourcePath === undefined || resourcePath === '') {
-            throw new InvalidArgumentError('arguments', 'resourcePath', [resourcePath]);
+            throw new InvalidArgumentError('arguments', 'resourcePath or TreeNode', [resourcePathOrNode]);
         }
 
         try {
@@ -71,6 +76,29 @@ export class CopyPathCommand extends Command {
                 error instanceof Error ? error : undefined
             );
         }
+    }
+
+    /**
+     * Extracts a resource path from direct string input or a tree node.
+     */
+    private extractResourcePath(resourcePathOrNode?: string | TreeNode): string | undefined {
+        if (typeof resourcePathOrNode === 'string') {
+            return resourcePathOrNode;
+        }
+
+        if (resourcePathOrNode && typeof resourcePathOrNode === 'object') {
+            const nodeWithOriginalPath = resourcePathOrNode as TreeNode & { originalResourcePath?: unknown };
+
+            if (typeof nodeWithOriginalPath.originalResourcePath === 'string') {
+                return nodeWithOriginalPath.originalResourcePath;
+            }
+
+            if (typeof resourcePathOrNode.resourcePath === 'string') {
+                return resourcePathOrNode.resourcePath;
+            }
+        }
+
+        return undefined;
     }
 
     /**

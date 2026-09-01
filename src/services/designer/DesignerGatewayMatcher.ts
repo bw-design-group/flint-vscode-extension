@@ -9,6 +9,7 @@ import { ServiceContainer } from '@/core/ServiceContainer';
 import { GatewayConfig } from '@/core/types/configuration';
 import { IServiceLifecycle, ServiceStatus } from '@/core/types/services';
 import { WorkspaceConfigService } from '@/services/config/WorkspaceConfigService';
+import { EnvironmentService, ResolvedEnvironmentConfig } from '@/services/environments/EnvironmentService';
 
 /**
  * Result of matching a Designer to a gateway
@@ -18,6 +19,8 @@ export interface GatewayMatchResult {
     readonly gatewayId: string | null;
     /** The matched gateway config, if any */
     readonly gateway: GatewayConfig | null;
+    /** The environment whose resolved config produced this result, if any */
+    readonly environment: string | null;
     /** Whether the match is exact (host/port/ssl all match) */
     readonly isExactMatch: boolean;
     /** Whether the project is in the gateway's project list */
@@ -34,6 +37,7 @@ export interface GatewayMatchResult {
 export class DesignerGatewayMatcher implements IServiceLifecycle {
     private status: ServiceStatus = ServiceStatus.NOT_INITIALIZED;
     private configService: WorkspaceConfigService | null = null;
+    private environmentService: EnvironmentService | null = null;
 
     constructor(private readonly serviceContainer: ServiceContainer) {}
 
@@ -41,11 +45,15 @@ export class DesignerGatewayMatcher implements IServiceLifecycle {
         this.status = ServiceStatus.INITIALIZING;
         try {
             this.configService = this.serviceContainer.get<WorkspaceConfigService>('WorkspaceConfigService');
-            this.status = ServiceStatus.INITIALIZED;
         } catch {
             // Config service might not be available yet - that's ok
-            this.status = ServiceStatus.INITIALIZED;
         }
+        try {
+            this.environmentService = this.serviceContainer.get<EnvironmentService>('EnvironmentService');
+        } catch {
+            // Environment service might not be available yet - that's ok
+        }
+        this.status = ServiceStatus.INITIALIZED;
         return Promise.resolve();
     }
 
@@ -84,6 +92,9 @@ export class DesignerGatewayMatcher implements IServiceLifecycle {
         if (!this.configService) {
             return this.createNoMatchResult('Configuration service not available');
         }
+        if (!this.environmentService) {
+            return this.createNoMatchResult('Environment service not available');
+        }
 
         try {
             const gateways = await this.configService.getGateways();
@@ -94,71 +105,97 @@ export class DesignerGatewayMatcher implements IServiceLifecycle {
     }
 
     /**
-     * Finds the best matching gateway for a Designer
+     * Finds the best matching gateway for a Designer.
+     *
+     * A Designer is connected to one specific gateway endpoint, which may correspond to any
+     * of a gateway's configured environments — not necessarily the one currently selected in
+     * the editor. So every environment of every gateway is resolved and evaluated.
      */
     private findBestMatch(designer: DesignerInstance, gateways: Record<string, GatewayConfig>): GatewayMatchResult {
         let bestMatch: GatewayMatchResult | null = null;
+        let sawResolvableEnvironment = false;
 
         for (const [gatewayId, gateway] of Object.entries(gateways)) {
-            const match = this.evaluateMatch(designer, gatewayId, gateway);
+            for (const resolved of this.environmentService!.resolveAllEnvironmentConfigs(gateway)) {
+                sawResolvableEnvironment = true;
+                const match = this.evaluateMatch(designer, gatewayId, gateway, resolved);
 
-            // Perfect match - return immediately
-            if (match.isExactMatch && match.projectMatched) {
-                return match;
-            }
+                // Perfect match - return immediately
+                if (match.isExactMatch && match.projectMatched) {
+                    return match;
+                }
 
-            // Track best partial match
-            if (!bestMatch || this.isBetterMatch(match, bestMatch)) {
-                bestMatch = match;
+                // Track best partial match
+                if (!bestMatch || this.isBetterMatch(match, bestMatch)) {
+                    bestMatch = match;
+                }
             }
         }
 
-        return bestMatch ?? this.createNoMatchResult('No configured gateways match this Designer');
+        if (bestMatch) {
+            return bestMatch;
+        }
+
+        return this.createNoMatchResult(
+            sawResolvableEnvironment
+                ? 'No configured gateways match this Designer'
+                : 'No configured gateway has a resolvable host'
+        );
     }
 
     /**
-     * Evaluates how well a Designer matches a gateway configuration
+     * Evaluates how well a Designer matches one resolved gateway environment.
+     *
+     * All connection fields come from {@link ResolvedEnvironmentConfig} so that matching
+     * uses exactly the values the extension would connect with, including gateway-level
+     * defaults inherited by the environment.
      */
-    private evaluateMatch(designer: DesignerInstance, gatewayId: string, gateway: GatewayConfig): GatewayMatchResult {
+    private evaluateMatch(
+        designer: DesignerInstance,
+        gatewayId: string,
+        gateway: GatewayConfig,
+        resolved: ResolvedEnvironmentConfig
+    ): GatewayMatchResult {
         const designerGateway = designer.gateway;
-
-        // If gateway host is not configured, it can't match
-        if (!gateway.host) {
-            return this.createNoMatchResult(`Gateway '${gatewayId}' has no host configured`);
-        }
+        const label = this.describeTarget(gatewayId, resolved);
 
         // Normalize hosts for comparison
         const designerHost = this.normalizeHost(designerGateway.host);
-        const gatewayHost = this.normalizeHost(gateway.host);
+        const gatewayHost = this.normalizeHost(resolved.host);
 
         // Check host match
         const hostMatches = designerHost === gatewayHost;
 
         // Check port match
-        const portMatches = designerGateway.port === gateway.port;
+        const portMatches = designerGateway.port === resolved.port;
 
-        // Check SSL match (default to false if not specified)
+        // Check SSL match (designer omits ssl when not using TLS).
+        //
+        // `resolved.ssl` is either the declared value or one derived from the port, and it is
+        // the same value the extension connects with. Matching therefore agrees with the
+        // connection by construction: a config the matcher accepts is one the language server
+        // and the scan endpoint can also reach.
         const designerSsl = designerGateway.ssl ?? false;
-        const gatewaySsl = gateway.ssl ?? false;
+        const gatewaySsl = resolved.ssl;
         const sslMatches = designerSsl === gatewaySsl;
 
         const isExactMatch = hostMatches && portMatches && sslMatches;
 
         // Check if project is in gateway's project list
-        const projectMatched = this.isProjectInGateway(designer.project.name, gateway);
+        const projectMatched = this.isProjectInGateway(designer.project.name, resolved);
 
         // Build mismatch reason if not perfect
         let mismatchReason: string | null = null;
         if (!isExactMatch || !projectMatched) {
             const reasons: string[] = [];
             if (!hostMatches) {
-                reasons.push(`host mismatch (Designer: ${designerHost}, Config: ${gatewayHost})`);
+                reasons.push(`host mismatch (Designer: ${designerHost}, ${label}: ${gatewayHost})`);
             }
             if (!portMatches) {
-                reasons.push(`port mismatch (Designer: ${designerGateway.port}, Config: ${gateway.port})`);
+                reasons.push(`port mismatch (Designer: ${designerGateway.port}, ${label}: ${resolved.port})`);
             }
             if (!sslMatches) {
-                reasons.push(`SSL mismatch (Designer: ${designerSsl}, Config: ${gatewaySsl})`);
+                reasons.push(`SSL mismatch (Designer: ${designerSsl}, ${label}: ${gatewaySsl})`);
             }
             if (isExactMatch && !projectMatched) {
                 reasons.push(`project '${designer.project.name}' not in gateway's project list`);
@@ -169,6 +206,7 @@ export class DesignerGatewayMatcher implements IServiceLifecycle {
         return {
             gatewayId: isExactMatch ? gatewayId : null,
             gateway: isExactMatch ? gateway : null,
+            environment: isExactMatch ? resolved.environment : null,
             isExactMatch,
             projectMatched,
             mismatchReason
@@ -176,17 +214,24 @@ export class DesignerGatewayMatcher implements IServiceLifecycle {
     }
 
     /**
+     * Describes the config side of a comparison, naming the environment when there is one
+     */
+    private describeTarget(gatewayId: string, resolved: ResolvedEnvironmentConfig): string {
+        return `Config ${gatewayId}/${resolved.environment}`;
+    }
+
+    /**
      * Checks if a project is in a gateway's project list
      */
-    private isProjectInGateway(projectName: string, gateway: GatewayConfig): boolean {
+    private isProjectInGateway(projectName: string, resolved: ResolvedEnvironmentConfig): boolean {
         // If no projects configured, consider it a match
-        if (!gateway.projects || gateway.projects.length === 0) {
+        if (resolved.projects.length === 0) {
             return true;
         }
 
         // Case-insensitive comparison
         const normalizedProject = projectName.toLowerCase();
-        return gateway.projects.some(p => p.toLowerCase() === normalizedProject);
+        return resolved.projects.some(p => p.toLowerCase() === normalizedProject);
     }
 
     /**
@@ -235,6 +280,7 @@ export class DesignerGatewayMatcher implements IServiceLifecycle {
         return {
             gatewayId: null,
             gateway: null,
+            environment: null,
             isExactMatch: false,
             projectMatched: false,
             mismatchReason: reason

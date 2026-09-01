@@ -237,7 +237,7 @@ suite('ConfigValidationService Test Suite', () => {
 
             const result = await service.validateGateway('test-gw', gateway);
             assert.strictEqual(result.isValid, true);
-            assert.ok(result.warnings.some(w => w.includes('both legacy')));
+            assert.ok(result.warnings.some(w => w.includes('inherits')));
         });
 
         test('Should reject empty gateway ID', async () => {
@@ -268,7 +268,9 @@ suite('ConfigValidationService Test Suite', () => {
             assert.strictEqual(resultValid.isValid, true);
         });
 
-        test('Should validate boolean properties', async () => {
+        // Type-only problems warn rather than error: a wrong type falls back to the default,
+        // and WorkspaceConfigService aborts the entire config load on any error.
+        test('Should warn, not error, on wrong boolean property types', async () => {
             const gateway = createGateway({
                 host: 'localhost',
                 ssl: 'true',
@@ -276,20 +278,20 @@ suite('ConfigValidationService Test Suite', () => {
             });
 
             const result = await service.validateGateway('test', gateway);
-            assert.strictEqual(result.isValid, false);
-            assert.ok(result.errors.some(e => e.includes('SSL') && e.includes('boolean')));
-            assert.ok(result.errors.some(e => e.includes('enabled') && e.includes('boolean')));
+            assert.strictEqual(result.isValid, true, 'the configuration must still load');
+            assert.ok(result.warnings.some(w => w.includes('SSL') && w.includes('boolean')));
+            assert.ok(result.warnings.some(w => w.includes('enabled') && w.includes('boolean')));
         });
 
-        test('Should validate projects array', async () => {
+        test('Should warn, not error, on a malformed projects array', async () => {
             const gateway = createGateway({
                 host: 'localhost',
                 projects: ['project1', 123]
             });
 
             const result = await service.validateGateway('test', gateway);
-            assert.strictEqual(result.isValid, false);
-            assert.ok(result.errors.some(e => e.includes('project at index')));
+            assert.strictEqual(result.isValid, true, 'the configuration must still load');
+            assert.ok(result.warnings.some(w => w.includes('project at index')));
         });
 
         test('Should warn about localhost usage', async () => {
@@ -648,6 +650,77 @@ suite('ConfigValidationService Test Suite', () => {
             const result = await service.validateConfiguration(config);
             assert.strictEqual(result.isValid, false);
             assert.ok(result.errors.some(e => e.includes('must be a string')));
+        });
+    });
+
+    // ========================================================================
+    // ENVIRONMENT HOST INHERITANCE (whole-config path)
+    // ========================================================================
+
+    /**
+     * These go through validateConfiguration() — the path WorkspaceConfigService actually
+     * uses when loading flint.config.json, and which throws ConfigurationInvalidError on
+     * failure. Asserting through validateGateway() alone would miss a regression here:
+     * the two used to be separate implementations that drifted apart.
+     */
+    suite('Environment host inheritance', () => {
+        function configWithGateway(gateway: Record<string, unknown>): FlintConfig {
+            return createConfig({
+                schemaVersion: '0.2',
+                'project-paths': ['/projects'],
+                gateways: { gw: gateway }
+            });
+        }
+
+        test('Loads a config whose environment inherits the gateway-level host', async () => {
+            const config = configWithGateway({
+                host: 'gw.example.com',
+                environments: { prod: { port: 443, ssl: true } }
+            });
+
+            const result = await service.validateConfiguration(config);
+
+            assert.strictEqual(result.isValid, true, `unexpected errors: ${result.errors.join('; ')}`);
+        });
+
+        test('Loads a config whose environment overrides nothing at all', async () => {
+            const config = configWithGateway({ host: 'gw.example.com', environments: { local: {} } });
+
+            const result = await service.validateConfiguration(config);
+
+            assert.strictEqual(result.isValid, true, `unexpected errors: ${result.errors.join('; ')}`);
+        });
+
+        test('Still rejects an environment with no host at either level', async () => {
+            const config = configWithGateway({ environments: { local: { port: 8088 } } });
+
+            const result = await service.validateConfiguration(config);
+
+            assert.strictEqual(result.isValid, false);
+            assert.ok(
+                result.errors.some(e => /host is required when the gateway does not define/.test(e)),
+                `expected an inheritance-aware host error, got: ${result.errors.join('; ')}`
+            );
+        });
+
+        test('Still rejects a non-string environment host', async () => {
+            const config = configWithGateway({ host: 'gw.example.com', environments: { local: { host: 42 } } });
+
+            const result = await service.validateConfiguration(config);
+
+            assert.strictEqual(result.isValid, false);
+            assert.ok(result.errors.some(e => /host must be a string/.test(e)));
+        });
+
+        test('validateGateway() and the whole-config path agree', async () => {
+            // Guards against the two validators drifting apart again.
+            const gateway = { id: 'gw', host: 'gw.example.com', environments: { prod: { port: 443 } } };
+
+            const direct = await service.validateGateway('gw', createGateway(gateway));
+            const viaConfig = await service.validateConfiguration(configWithGateway(gateway));
+
+            assert.strictEqual(direct.isValid, viaConfig.isValid);
+            assert.strictEqual(direct.isValid, true);
         });
     });
 });
