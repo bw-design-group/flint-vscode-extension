@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-29
+
+### Fixed
+- Go-to-definition and workspace symbol search from the language server now open
+  the right file when the workspace is a repo that holds the Ignition project in a
+  subfolder (for example `projects/<name>/`), not just when VS Code is opened on the
+  project folder itself. Requires Flint Designer Bridge 1.3.0 or later on the gateway.
+- Completion after an intermediate script package (`myPkg.`) now offers the packages
+  and modules nested under it. Requires Flint Designer Bridge 1.3.0 or later.
+
 ## [1.3.0] - 2026-09-01
 
 ### Added

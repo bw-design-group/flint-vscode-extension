@@ -26,6 +26,7 @@ import {
 
 import { ServiceContainer } from '@/core/ServiceContainer';
 import { IServiceLifecycle, ServiceStatus } from '@/core/types/services';
+import { ProjectScannerService } from '@/services/config/ProjectScannerService';
 import { WorkspaceConfigService } from '@/services/config/WorkspaceConfigService';
 import { ScriptFileSystemService } from '@/services/decode/ScriptFileSystemService';
 import { EnvironmentService } from '@/services/environments/EnvironmentService';
@@ -56,6 +57,11 @@ interface IGatewayLspConnection {
     insecureTls: boolean;
     /** Selected project, forwarded to the server via `initializationOptions`. */
     project: string | undefined;
+    /**
+     * URI of the selected project's folder on disk, forwarded as `initializationOptions.projectRoot`
+     * so cross-file URIs resolve when the workspace root is an ancestor of the project folder.
+     */
+    projectRoot: string | undefined;
 }
 
 /**
@@ -72,6 +78,9 @@ export class LanguageServerService implements IServiceLifecycle {
     private gatewayManager!: GatewayManagerService;
     private configService!: WorkspaceConfigService;
     private environmentService!: EnvironmentService;
+    private projectScanner!: ProjectScannerService;
+    /** Project root the running client was started with, to detect when a later scan resolves it. */
+    private connectedProjectRoot: string | undefined;
 
     constructor(private readonly serviceContainer: ServiceContainer) {}
 
@@ -90,6 +99,7 @@ export class LanguageServerService implements IServiceLifecycle {
         this.gatewayManager = this.serviceContainer.get<GatewayManagerService>('GatewayManagerService');
         this.configService = this.serviceContainer.get<WorkspaceConfigService>('WorkspaceConfigService');
         this.environmentService = this.serviceContainer.get<EnvironmentService>('EnvironmentService');
+        this.projectScanner = this.serviceContainer.get<ProjectScannerService>('ProjectScannerService');
         this.outputChannel = vscode.window.createOutputChannel('Flint Language Server');
 
         this.status = ServiceStatus.INITIALIZED;
@@ -105,6 +115,7 @@ export class LanguageServerService implements IServiceLifecycle {
             this.gatewayManager.onGatewaySelected(() => void this.restart()),
             this.gatewayManager.onProjectSelected(() => void this.restart()),
             this.configService.onConfigChanged(() => void this.restart()),
+            this.projectScanner.onScanComplete(() => this.restartIfProjectRootChanged()),
             vscode.workspace.onDidChangeConfiguration(e => {
                 if (e.affectsConfiguration(CONFIG_SECTION)) {
                     void this.restart();
@@ -182,7 +193,7 @@ export class LanguageServerService implements IServiceLifecycle {
                 { language: 'python', scheme: ScriptFileSystemService.SCHEME }
             ],
             outputChannel: this.outputChannel,
-            initializationOptions: { project: connection.project },
+            initializationOptions: { project: connection.project, projectRoot: connection.projectRoot },
             errorHandler: this.createErrorHandler()
         };
 
@@ -191,6 +202,7 @@ export class LanguageServerService implements IServiceLifecycle {
         try {
             await client.start();
             this.client = client;
+            this.connectedProjectRoot = connection.projectRoot;
             this.log(`Flint language server connected over WebSocket (${wsUrl}).`);
         } catch (error) {
             this.log(
@@ -261,12 +273,41 @@ export class LanguageServerService implements IServiceLifecycle {
         }
 
         const tokenType = this.resolveTokenType(token, resolved.ignitionVersion);
+        const project = this.gatewayManager.getSelectedProject() ?? undefined;
         return {
             gatewayUrl: EnvironmentService.buildUrl(resolved, ''),
             headers: this.buildAuthHeaders(token, tokenType),
             insecureTls: resolved.ignoreSSLErrors === true,
-            project: this.gatewayManager.getSelectedProject() ?? undefined
+            project,
+            projectRoot: this.resolveProjectRootUri(project)
         };
+    }
+
+    /**
+     * URI of the project's folder on disk, from the project scanner. Undefined until the project has
+     * been scanned; the server then falls back to the workspace root.
+     */
+    private resolveProjectRootUri(project: string | undefined): string | undefined {
+        if (!project) {
+            return undefined;
+        }
+        const scanned = this.projectScanner.getProject(project);
+        return scanned ? vscode.Uri.file(scanned.projectPath).toString() : undefined;
+    }
+
+    /**
+     * Restarts the client when a project scan changes the resolved project root, e.g. when the
+     * client started before the initial scan finished.
+     */
+    private restartIfProjectRootChanged(): void {
+        if (!this.client) {
+            return;
+        }
+        const project = this.gatewayManager.getSelectedProject() ?? undefined;
+        if (this.resolveProjectRootUri(project) === this.connectedProjectRoot) {
+            return;
+        }
+        void this.restart();
     }
 
     /**
