@@ -233,16 +233,15 @@ export class OpenResourceCommand extends Command {
         // Use the first directory path (most resource types have only one)
         const resourceDirectory = directoryPaths[0];
 
-        // Strip the resource directory from the resource path if it's already included
-        // This happens when the TreeNode's resourcePath includes the full path from project root
-        let relativeResourcePath = resourcePath;
-        if (
-            resourcePath.startsWith(`${resourceDirectory}/`) ||
-            resourcePath.startsWith(`${resourceDirectory}${path.sep}`)
-        ) {
-            relativeResourcePath = resourcePath.substring(resourceDirectory.length + 1);
-        } else if (resourcePath === resourceDirectory) {
+        // Both sides are normalized to forward slashes so matching works on Windows too.
+        const normalizedResourcePath = resourcePath.replace(/\\/g, '/');
+        const normalizedResourceDirectory = resourceDirectory.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+
+        let relativeResourcePath = normalizedResourcePath;
+        if (normalizedResourcePath === normalizedResourceDirectory) {
             relativeResourcePath = '';
+        } else if (normalizedResourcePath.startsWith(`${normalizedResourceDirectory}/`)) {
+            relativeResourcePath = normalizedResourcePath.substring(normalizedResourceDirectory.length + 1);
         }
 
         // Build the full resource path within the correct resource type directory

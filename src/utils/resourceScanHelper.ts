@@ -259,6 +259,9 @@ export class ResourceScanHelper {
      * Builds resource path for orphaned resource.json
      */
     private static buildOrphanedResourcePath(resourceType: ResourceTypeDefinition, relativePath: string): string {
+        // Normalize separators before prefix checks, guard against windows
+        relativePath = this.normalizePath(relativePath);
+
         // For categorized types, try to determine category from path
         if (resourceType.categories) {
             for (const [categoryId] of Object.entries(resourceType.categories)) {

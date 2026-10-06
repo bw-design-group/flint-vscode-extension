@@ -5,6 +5,8 @@
  */
 
 import * as assert from 'assert';
+import * as fs from 'fs/promises';
+import * as os from 'os';
 import * as path from 'path';
 
 import * as vscode from 'vscode';
@@ -206,6 +208,56 @@ suite('ProjectScannerService Test Suite', () => {
                 assert.fail('Should have thrown');
             } catch (e) {
                 assert.ok(e instanceof Error);
+            }
+        });
+
+        // Regression test for issue #3: resource paths were built with path.join(),
+        // producing backslashes on Windows. The tree builder splits on '/', so paths
+        // rendered flat and resources failed to open.
+        test('Should produce resource paths with forward slashes only', async () => {
+            // Build a throwaway Ignition project instead of relying on the test-fixtures
+            // workspace, so the nested-directory case is always covered.
+            const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'flint-scan-'));
+            const projectDir = path.join(tmpRoot, 'NestedProject');
+            const scriptDir = path.join(projectDir, 'ignition', 'script-python', 'core', 'db', 'utils');
+
+            try {
+                await fs.mkdir(scriptDir, { recursive: true });
+                await fs.writeFile(path.join(projectDir, 'project.json'), JSON.stringify({ name: 'NestedProject' }));
+                await fs.writeFile(path.join(scriptDir, 'resource.json'), '{}');
+                await fs.writeFile(path.join(scriptDir, 'code.py'), '# test\n');
+
+                const result = await service.scanProject(projectDir, false);
+                const script = result.resources.filter(r => r.type === 'script-python');
+
+                assert.ok(script.length > 0, 'Expected the nested script resource to be discovered');
+
+                for (const resource of script) {
+                    assert.ok(
+                        !resource.path.includes('\\'),
+                        `Resource path should not contain backslashes: ${resource.path}`
+                    );
+
+                    // Must start at the resource type's configured directory so the tree can
+                    // nest it and OpenResourceCommand can strip the prefix
+                    assert.ok(
+                        resource.path.startsWith('ignition/script-python/'),
+                        `Resource path should be nested under the configured directory: ${resource.path}`
+                    );
+
+                    // Metadata key embeds the same path
+                    const key = resource.metadata?.key;
+                    if (typeof key === 'string') {
+                        assert.ok(!key.includes('\\'), `Resource key should not contain backslashes: ${key}`);
+                    }
+                }
+
+                const nested = script.find(r => r.path.endsWith('core/db/utils'));
+                assert.ok(nested, 'Expected the three-level nested resource to be scanned');
+                assert.strictEqual(nested.path, 'ignition/script-python/core/db/utils');
+            } finally {
+                await service.stop();
+                await fs.rm(tmpRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
             }
         });
     });

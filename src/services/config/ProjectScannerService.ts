@@ -944,7 +944,8 @@ export class ProjectScannerService implements IServiceLifecycle {
 
                 for (const entry of entries) {
                     const entryPath = path.join(currentPath, entry.name);
-                    const entryRelativePath = path.join(currentRelativePath, entry.name);
+                    // Resource paths are stored with forward slashes so they are identical on every OS.
+                    const entryRelativePath = path.join(currentRelativePath, entry.name).replace(/\\/g, '/');
 
                     if (entry.isDirectory()) {
                         // Check if this directory contains a resource.json (indicates a resource)
