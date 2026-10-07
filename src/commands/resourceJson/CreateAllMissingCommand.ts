@@ -16,6 +16,7 @@ import { ProjectScannerService } from '@/services/config/ProjectScannerService';
 import { GatewayManagerService } from '@/services/gateways/GatewayManagerService';
 import { ResourceTypeProviderRegistry } from '@/services/resources/ResourceTypeProviderRegistry';
 import { ResourceValidationService } from '@/services/resources/ResourceValidationService';
+import { toPosixResourcePath } from '@/utils/path/resourcePathHelper';
 
 /**
  * Missing resource information
@@ -442,7 +443,7 @@ export class CreateAllMissingCommand extends Command {
             await fs.access(resourceJsonPath);
         } catch {
             // resource.json is missing
-            const relativeResourcePath = path.relative(context.projectBasePath, resourcePath);
+            const relativeResourcePath = toPosixResourcePath(path.relative(context.projectBasePath, resourcePath));
             context.missingResources.push({
                 projectId: context.projectId,
                 typeId: context.resourceProvider.resourceTypeId,

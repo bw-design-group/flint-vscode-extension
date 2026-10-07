@@ -14,6 +14,7 @@ import { ServiceContainer } from '@/core/ServiceContainer';
 import { ProjectResource, ResourceOrigin } from '@/core/types/models';
 import { IServiceLifecycle, ServiceStatus } from '@/core/types/services';
 import { ResourceTypeProviderRegistry } from '@/services/resources/ResourceTypeProviderRegistry';
+import { toPosixResourcePath } from '@/utils/path/resourcePathHelper';
 
 /**
  * Parameters for scanning resource directory
@@ -944,7 +945,8 @@ export class ProjectScannerService implements IServiceLifecycle {
 
                 for (const entry of entries) {
                     const entryPath = path.join(currentPath, entry.name);
-                    const entryRelativePath = path.join(currentRelativePath, entry.name);
+                    // Resource paths are stored with forward slashes so they are identical on every OS.
+                    const entryRelativePath = toPosixResourcePath(path.join(currentRelativePath, entry.name));
 
                     if (entry.isDirectory()) {
                         // Check if this directory contains a resource.json (indicates a resource)

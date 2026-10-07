@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-10-07
+
+### Fixed
+- The Project Browser on Windows nests resources in their folders again instead of listing them
+  flat under their full paths, and opening those resources from the tree works. Resource paths are
+  now stored with forward slashes on every OS. Contributed by @nburnet1
+  ([#8](https://github.com/bw-design-group/flint-vscode-extension/pull/8), fixes
+  [#3](https://github.com/bw-design-group/flint-vscode-extension/issues/3)).
+
 ## [1.4.0] - 2026-09-29
 
 ### Fixed

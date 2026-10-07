@@ -14,6 +14,7 @@ import { FlintError, InvalidArgumentError } from '@/core/errors';
 import { CommandContext, CommandValidationResult } from '@/core/types/commands';
 import { TreeNode } from '@/core/types/tree';
 import { ResourceTypeProviderRegistry } from '@/services/resources/ResourceTypeProviderRegistry';
+import { stripResourceDirectoryPrefix } from '@/utils/path/resourcePathHelper';
 
 /**
  * Type guard to check if argument is a TreeNode
@@ -233,17 +234,7 @@ export class OpenResourceCommand extends Command {
         // Use the first directory path (most resource types have only one)
         const resourceDirectory = directoryPaths[0];
 
-        // Strip the resource directory from the resource path if it's already included
-        // This happens when the TreeNode's resourcePath includes the full path from project root
-        let relativeResourcePath = resourcePath;
-        if (
-            resourcePath.startsWith(`${resourceDirectory}/`) ||
-            resourcePath.startsWith(`${resourceDirectory}${path.sep}`)
-        ) {
-            relativeResourcePath = resourcePath.substring(resourceDirectory.length + 1);
-        } else if (resourcePath === resourceDirectory) {
-            relativeResourcePath = '';
-        }
+        const relativeResourcePath = stripResourceDirectoryPrefix(resourcePath, resourceDirectory);
 
         // Build the full resource path within the correct resource type directory
         const fullResourcePath = path.join(projectBasePath, resourceDirectory, relativeResourcePath);

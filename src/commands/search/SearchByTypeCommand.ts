@@ -15,6 +15,7 @@ import { CommandContext, CommandValidationResult } from '@/core/types/commands';
 import { ResourceSearchResult } from '@/core/types/resources';
 import { GatewayManagerService } from '@/services/gateways/GatewayManagerService';
 import { SearchProviderService } from '@/services/search/SearchProviderService';
+import { toPosixResourcePath } from '@/utils/path/resourcePathHelper';
 
 /**
  * Command to search and filter resources by their type
@@ -303,7 +304,9 @@ export class SearchByTypeCommand extends Command {
                             const resourceStat = await fs.stat(resourcePath);
 
                             if (resourceStat.isDirectory()) {
-                                const relativeResourcePath = path.relative(projectPath, resourcePath);
+                                const relativeResourcePath = toPosixResourcePath(
+                                    path.relative(projectPath, resourcePath)
+                                );
                                 resources.push({
                                     name: resourceDir,
                                     path: relativeResourcePath,

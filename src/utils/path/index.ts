@@ -7,6 +7,7 @@
 export * from './PathUtilities';
 export * from './ResourcePathResolver';
 export * from './PathValidator';
+export * from './resourcePathHelper';
 
 // Re-export commonly used types from PathUtilities
 export type { PathNormalizationOptions, PathValidationResult, ParsedResourcePath } from './PathUtilities';

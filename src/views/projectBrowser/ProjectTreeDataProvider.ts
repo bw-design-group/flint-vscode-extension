@@ -18,6 +18,7 @@ import { ConfigurationNotFoundError, FlintError } from '@/core/errors';
 import { ServiceContainer } from '@/core/ServiceContainer';
 import { IServiceLifecycle, ServiceStatus } from '@/core/types/services';
 import { TreeNode, TreeNodeType } from '@/core/types/tree';
+import { stripResourceDirectoryPrefix } from '@/utils/path/resourcePathHelper';
 
 // Import our new components
 
@@ -830,7 +831,7 @@ export class ProjectTreeDataProvider implements vscode.TreeDataProvider<TreeNode
         }
 
         const { resourceDirectory, primaryFile } = this.getResourceProviderPaths(typeId);
-        const relativePath = this.stripResourceDirectoryPrefix(element.resourcePath, resourceDirectory);
+        const relativePath = stripResourceDirectoryPrefix(element.resourcePath, resourceDirectory);
         const resourceDirectoryPath = path.join(projectPath, resourceDirectory, relativePath);
 
         if (element.type === TreeNodeType.RESOURCE_FOLDER) {
@@ -900,28 +901,6 @@ export class ProjectTreeDataProvider implements vscode.TreeDataProvider<TreeNode
         }
 
         return vscode.Uri.file(resourceDirectoryPath);
-    }
-
-    /**
-     * Removes provider directory prefix from a resource path when needed.
-     */
-    private stripResourceDirectoryPrefix(resourcePath: string, resourceDirectory: string): string {
-        if (!resourceDirectory) {
-            return resourcePath;
-        }
-
-        const normalizedResourcePath = resourcePath.replace(/\\/g, '/');
-        const normalizedResourceDirectory = resourceDirectory.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
-
-        if (normalizedResourcePath === normalizedResourceDirectory) {
-            return '';
-        }
-
-        if (normalizedResourcePath.startsWith(`${normalizedResourceDirectory}/`)) {
-            return normalizedResourcePath.substring(normalizedResourceDirectory.length + 1);
-        }
-
-        return resourcePath;
     }
 
     /**
